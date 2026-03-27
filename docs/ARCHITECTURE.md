@@ -186,6 +186,8 @@ sequenceDiagram
         S-->>M: Near-term contracts
         M->>S: GET /chains (8-45 DTE, TTL=120s)
         S-->>M: Mid-term contracts
+        M->>S: GET /chains (46-180, 181-365, 366+ DTE)
+        S-->>M: Long-dated + LEAPs
         M->>C: Store with per-range TTL
     end
     M->>M: Calculate GEX per strike
@@ -435,11 +437,12 @@ graph LR
         L4["Then full re-auth required"]
     end
 
-    subgraph Cache["Smart Cache (per DTE range)"]
+    subgraph Cache["Smart Cache (per DTE range — no DTE cap)"]
         C1["0-7 DTE → 60s TTL<br/>(near-term gamma changes fast)"]
         C2["8-45 DTE → 120s TTL<br/>(moderate refresh)"]
         C3["46-180 DTE → 300s TTL<br/>(slow-changing)"]
-        C4["181-730 DTE → 300s TTL<br/>(LEAPs, very slow)"]
+        C4["181-365 DTE → 600s TTL<br/>(LEAPs, slow)"]
+        C5["366+ DTE → 900s TTL<br/>(deep LEAPs, very slow)"]
     end
 
     subgraph Quotes["Quote Cache"]
@@ -457,11 +460,12 @@ graph LR
 ```
 
 **Budget at 120 req/min:**
-- Full SPX chain fetch (4 DTE ranges) = 4 requests
+- Full SPX chain fetch (5 DTE ranges) = 5 requests
 - VIX + VIX3M quotes = 2 requests
 - SPX underlying quote = 1 request
-- Total per full refresh = ~7 requests
+- Total per full refresh = ~8 requests
 - Comfortable headroom for additional symbols and ad-hoc queries
+- Deep LEAPs (366+ DTE) cached 15 min — rarely re-fetched
 
 ---
 
@@ -629,13 +633,12 @@ TOKEN_PATH=./tokens/schwab_tokens.json
 
 # Default Settings
 DEFAULT_SYMBOL=SPX
-MAX_DTE=730
-GEX_LEVEL_MAX_DTE=45
+GEX_LEVEL_MAX_DTE=45              # Only near-term gamma matters for GEX levels
 
-# Cache Settings
+# Cache Settings (full chain fetched — no DTE cap)
 CACHE_DIRECTORY=./cache
-DTE_RANGES=0-7,8-45,46-180,181-730
-DTE_RANGE_CACHE_TTLS=60,120,300,300
+DTE_RANGES=0-7,8-45,46-180,181-365,366+
+DTE_RANGE_CACHE_TTLS=60,120,300,600,900
 QUOTE_CACHE_TTL=15
 
 # Alert State

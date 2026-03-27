@@ -55,7 +55,7 @@ Fetch full options chain with greeks, OI, volume.
 symbol: str                  # Required — e.g., "SPX"
 contract_type: str = "ALL"   # "CALL", "PUT", "ALL"
 from_dte: int = 0            # Min days to expiration
-to_dte: int = 45             # Max days to expiration
+to_dte: int | None = None    # Max DTE (None = all available, including 3yr+ LEAPs)
 strike_count: int | None     # Number of strikes above/below ATM (None = all)
 include_weekly: bool = True  # Include weekly expirations
 min_open_interest: int = 0   # Filter low-OI strikes
