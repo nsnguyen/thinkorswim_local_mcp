@@ -506,29 +506,28 @@ sequenceDiagram
     participant T as Token Manager
     participant S as Schwab OAuth
 
-    Note over M,T: First-time setup
-    M->>T: Check for saved tokens
-    alt No tokens found
-        T->>U: Open browser for Schwab login
-        U->>S: Login + authorize app
-        S->>T: Redirect with auth code
-        T->>S: Exchange code for tokens
-        S-->>T: access_token (30min) + refresh_token (7d)
-        T->>T: Save tokens to disk
-    end
+    Note over U,T: First-time setup (run scripts/authenticate.py)
+    T->>T: Start local HTTPS callback server
+    T->>U: Open browser to Schwab login
+    U->>S: Login + authorize app
+    S->>T: Redirect to callback URL (auto-captured)
+    T->>S: Exchange auth code for tokens
+    S-->>T: access_token (30min) + refresh_token (7d)
+    T->>T: Save tokens to disk
+    Note over U,T: No copy-paste needed
 
-    Note over M,T: Normal operation
+    Note over M,T: Normal MCP operation
     M->>T: Get access token
     alt Token valid
         T-->>M: Return access_token
-    else Token expired (< 30min)
+    else Access token expired
         T->>S: POST /token (refresh_token)
         S-->>T: New access_token + refresh_token
         T->>T: Save updated tokens
         T-->>M: Return new access_token
-    else Refresh token expired (> 7d)
-        T->>U: ⚠️ Re-authentication required
-        Note over U,S: User must login again
+    else Refresh token expired (every 7 days)
+        T-->>M: Error: re-auth required
+        Note over M,U: Claude tells user to run scripts/authenticate.py
     end
 ```
 

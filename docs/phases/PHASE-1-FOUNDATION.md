@@ -30,6 +30,9 @@ src/
 │   ├── models.py                # Pydantic v2 data models
 │   └── token_manager.py         # OAuth 2.0 token lifecycle
 
+scripts/
+└── authenticate.py              # One-time auth with auto-capture callback server
+
 pyproject.toml
 requirements.txt
 .env.example
@@ -43,11 +46,35 @@ requirements.txt
 - Load config from `.env`
 - Initialize Schwab client on startup
 
+### scripts/authenticate.py — Auto-Capture Auth Flow
+
+Eliminates the copy-paste step from schwabdev's default flow.
+
+**How it works:**
+1. Starts a local HTTPS server on the callback URL (e.g., `https://127.0.0.1:8182`)
+2. Opens browser to Schwab's OAuth login page
+3. User logs in (manual — unavoidable, Schwab requires it)
+4. Schwab redirects to callback URL → local server auto-captures the auth code
+5. Exchanges code for tokens via schwabdev
+6. Saves tokens to disk → server shuts down
+7. No copy-paste needed
+
+**Self-signed HTTPS cert:** Schwab requires HTTPS callback. The script generates a self-signed cert on first run (browser will show a warning once — that's fine for localhost).
+
+**Usage:**
+```bash
+# First time or every 7 days when refresh token expires
+python scripts/authenticate.py
+
+# Opens browser → you log in → tokens saved automatically
+```
+
 ### data/token_manager.py
 - Wrap `schwabdev` token handling
-- Store tokens at configurable path (`TOKEN_PATH`)
-- Auto-refresh access tokens (30 min lifetime)
-- Detect expired refresh tokens (7 day lifetime) and prompt re-auth
+- Read tokens saved by `scripts/authenticate.py`
+- Auto-refresh access tokens (30 min lifetime via schwabdev)
+- Detect expired refresh tokens (7 day lifetime)
+- On expired refresh token: return clear error so Claude can tell the user to re-run `scripts/authenticate.py`
 
 ### data/schwab_client.py
 - Wrap `schwabdev.Client`
@@ -124,6 +151,7 @@ class Quote(BaseModel):
 
 ## Definition of Done
 
+- [ ] `python scripts/authenticate.py` opens browser, auto-captures callback, saves tokens
 - [ ] `python -m src.server` starts without error
 - [ ] Claude Desktop connects via MCP config
 - [ ] `get_quote("SPX")` returns live quote
@@ -132,6 +160,7 @@ class Quote(BaseModel):
 - [ ] `get_options_chain("SPX")` returns full chain with greeks
 - [ ] Cache prevents duplicate API calls within TTL
 - [ ] Token auto-refresh works (no manual intervention for 7 days)
+- [ ] Expired refresh token returns clear error (not a crash)
 
 ## Dependencies
 
