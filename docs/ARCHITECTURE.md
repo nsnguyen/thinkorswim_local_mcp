@@ -396,13 +396,14 @@ thinkorswim_local_mcp/
 ## Module Dependency Graph
 
 ```mermaid
-graph LR
+graph TB
     subgraph Entry["server.py"]
+        direction LR
         S[MCP Entry Point]
     end
 
     subgraph Tools["tools/"]
-        direction TB
+        direction LR
         TM[market_data.py]
         TG[gex.py]
         TV[volatility.py]
@@ -410,7 +411,7 @@ graph LR
     end
 
     subgraph Core["core/"]
-        direction TB
+        direction LR
         GC[gex_calculator.py]
         GL[gex_levels.py]
         CV[volatility.py]
@@ -420,7 +421,7 @@ graph LR
     end
 
     subgraph Data["data/"]
-        direction TB
+        direction LR
         CL[schwab_client.py]
         MO[models.py]
         CH[cache.py]
@@ -454,26 +455,28 @@ graph LR
 ## Schwab API Rate Limits & Caching Strategy
 
 ```mermaid
-graph LR
+graph TB
     subgraph Limits["Schwab API Limits"]
+        direction LR
         L1["120 requests/minute"]
         L2["Access token: 30 min"]
         L3["Refresh token: 7 days"]
-        L4["Then full re-auth required"]
     end
 
-    subgraph Cache["Smart Cache (per DTE range — no DTE cap)"]
-        C1["0-7 DTE → 60s TTL<br/>(near-term gamma changes fast)"]
-        C2["8-45 DTE → 120s TTL<br/>(moderate refresh)"]
-        C3["46-180 DTE → 300s TTL<br/>(slow-changing)"]
-        C4["181-365 DTE → 600s TTL<br/>(LEAPs, slow)"]
-        C5["366+ DTE → 900s TTL<br/>(deep LEAPs, very slow)"]
+    subgraph Cache["Options Chain Cache (per DTE range — no DTE cap)"]
+        direction LR
+        C1["0-7 DTE<br/>60s TTL"]
+        C2["8-45 DTE<br/>120s TTL"]
+        C3["46-180 DTE<br/>300s TTL"]
+        C4["181-365 DTE<br/>600s TTL"]
+        C5["366+ DTE<br/>900s TTL"]
     end
 
     subgraph Quotes["Quote Cache"]
-        Q1["Equity quotes → 15s TTL"]
-        Q2["VIX quote → 30s TTL"]
-        Q3["Futures quotes → 15s TTL"]
+        direction LR
+        Q1["Equity<br/>15s TTL"]
+        Q2["VIX<br/>30s TTL"]
+        Q3["Futures<br/>15s TTL"]
     end
 
     Limits --> Cache
@@ -716,31 +719,12 @@ Add to `claude_desktop_config.json`:
 
 ## Phase Plan
 
-### Phase 1 — Foundation
-- Project setup (pyproject.toml, deps, structure)
-- Token manager + Schwab client with caching
-- Basic MCP server with `get_quote` and `get_options_chain` tools
-- Test with Claude Desktop
+Detailed implementation docs in [`docs/phases/`](phases/):
 
-### Phase 2 — GEX Engine
-- Port GEX calculator from gex-tool
-- Port level extraction (walls, zero gamma, HVL, max gamma)
-- `get_gex_levels`, `get_gex_summary`, `get_0dte_levels` tools
-- Charm/vanna projection tools
-
-### Phase 3 — Volatility & Context
-- Port IV analysis (skew, term structure, IV-RV)
-- Port VIX context
-- `analyze_volatility`, `get_vix_context`, `get_iv_surface` tools
-- MCP resources (market status, VIX dashboard, GEX regime)
-
-### Phase 4 — Trade Math & Alerts
-- Trade evaluator: POP calculation, max profit/loss, breakevens, net greeks
-- Alert condition engine (boolean checks, state persistence)
-- No strategy/recommendation logic — Claude handles all decisions
-
-### Phase 5 — Prompts & Polish
-- MCP prompts (morning briefing, iron condor scan, regime check)
-- Futures and futures options support
-- Error handling hardening
-- Documentation and tests
+| Phase | Focus | Key Deliverables | Depends On |
+|---|---|---|---|
+| [**Phase 1 — Foundation**](phases/PHASE-1-FOUNDATION.md) | Scaffolding + data | MCP server, Schwab client, cache, `get_quote`, `get_options_chain` | — |
+| [**Phase 2 — GEX Engine**](phases/PHASE-2-GEX-ENGINE.md) | GEX calculation | GEX calculator, level extraction, `get_gex_levels`, charm/vanna | Phase 1 |
+| [**Phase 3 — Volatility**](phases/PHASE-3-VOLATILITY.md) | IV + VIX analysis | IV skew, term structure, VIX context, expected move, MCP resources | Phase 1 |
+| [**Phase 4 — Trade Math**](phases/PHASE-4-TRADE-MATH.md) | Numbers for trades | POP (Black-Scholes), P&L, breakevens, alert engine | Phases 1-3 |
+| [**Phase 5 — Polish**](phases/PHASE-5-REMAINING-TOOLS.md) | Complete + harden | Remaining tools, MCP prompts, error handling, tests | Phases 1-4 |
