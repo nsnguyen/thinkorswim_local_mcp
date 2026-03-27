@@ -228,6 +228,7 @@ sequenceDiagram
 | `get_vix_context` | VIX level, percentile, regime, VIX/VIX3M ratio | VIX quote + 1yr history |
 | `estimate_charm_shift` | Project GEX shift N hours forward (time decay) | charm ≈ -θ/S |
 | `estimate_vanna_shift` | Project GEX shift for IV change | vanna ≈ ν/S |
+| `get_expected_move` | Expected move from ATM straddle + IV-based 1SD | ATM call+put price, Spot × IV × √(DTE/365) |
 
 ### Trade Math Tools (Pure Calculation — No Opinions)
 

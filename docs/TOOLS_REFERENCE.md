@@ -465,6 +465,51 @@ iv_change_pct: float = 2.0    # e.g., +2 = VIX goes up 2 points
 
 ---
 
+### `get_expected_move`
+
+Market-implied expected move for a symbol and expiration. Uses two methods:
+the ATM straddle price (what thinkorswim shows) and the IV-based 1 standard deviation move.
+
+```python
+# Parameters
+symbol: str = "SPX"
+expiration: str | None = None     # ISO date, or None = nearest weekly/monthly
+multiple_expirations: bool = False # If true, return expected move for all near-term expirations
+
+# Returns (single expiration)
+{
+    "symbol": "SPX",
+    "spot": 5250.50,
+    "expiration": "2025-03-28",
+    "dte": 2,
+    "expected_move_straddle": 65.40,     # ATM straddle price (call bid + put bid)
+    "expected_move_1sd": 62.80,          # Spot × ATM_IV × √(DTE/365)
+    "upper_bound": 5315.90,              # spot + expected_move_straddle
+    "lower_bound": 5185.10,              # spot - expected_move_straddle
+    "upper_bound_1sd": 5313.30,
+    "lower_bound_1sd": 5187.70,
+    "atm_strike": 5250.0,
+    "atm_call_bid": 33.20,
+    "atm_put_bid": 32.20,
+    "atm_iv": 14.5
+}
+
+# Returns (multiple_expirations=True)
+{
+    "symbol": "SPX",
+    "spot": 5250.50,
+    "expirations": [
+        {"expiration": "2025-03-26", "dte": 0, "expected_move_straddle": 28.50, "upper": 5279.0, "lower": 5222.0, "atm_iv": 12.8},
+        {"expiration": "2025-03-28", "dte": 2, "expected_move_straddle": 65.40, "upper": 5315.9, "lower": 5185.1, "atm_iv": 14.5},
+        {"expiration": "2025-04-04", "dte": 9, "expected_move_straddle": 98.20, "upper": 5348.7, "lower": 5152.3, "atm_iv": 15.1},
+        {"expiration": "2025-04-17", "dte": 22, "expected_move_straddle": 142.00, "upper": 5392.5, "lower": 5108.5, "atm_iv": 15.8},
+        ...
+    ]
+}
+```
+
+---
+
 ## Trade Math Tools (Pure Calculation — No Opinions)
 
 ### `evaluate_trade`
