@@ -72,28 +72,32 @@ The MCP never outputs opinions, recommendations, or interpretations. It returns 
 Clean layered architecture — data flows down, results flow up.
 
 ```mermaid
-graph LR
-    subgraph User["YOU + CLAUDE (brain)"]
-        direction TB
+graph TB
+    subgraph User["🧠 YOU + CLAUDE — the brain"]
+        direction LR
         U1["Interpret data"]
         U2["Make decisions"]
         U3["Pick trades"]
     end
 
-    subgraph MCP["MCP SERVER (calculator)"]
-        direction TB
+    User <-->|"MCP Protocol (stdio)"| MCP
+
+    subgraph MCP["🔧 MCP SERVER — the calculator"]
+        direction LR
         M1["Tools · Resources · Prompts"]
         M2["GEX Engine · Vol Analyzer · Trade Math"]
         M3["Schwab Client · Cache · Auth"]
     end
 
-    subgraph API["SCHWAB API"]
-        direction TB
-        A1["Chains · Quotes · History · Movers"]
-    end
+    MCP <-->|"HTTPS (120 req/min)"| API
 
-    User <---->|"MCP Protocol (stdio)"| MCP
-    MCP <---->|"HTTPS (120 req/min)"| API
+    subgraph API["📡 SCHWAB API — the data source"]
+        direction LR
+        A1["Options Chains"]
+        A2["Quotes"]
+        A3["Price History"]
+        A4["Movers"]
+    end
 
     style User fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
     style MCP fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
