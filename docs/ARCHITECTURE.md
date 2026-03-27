@@ -295,8 +295,8 @@ flowchart LR
 
     subgraph Calc["Per-Strike Calculation"]
         direction TB
-        F1["Call GEX = |Γ| × OI × 100 × S² × 0.01 × (+1)"]
-        F2["Put GEX = |Γ| × OI × 100 × S² × 0.01 × (-1)"]
+        F1["Call GEX = abs(Γ) × OI × 100 × S² × 0.01 × (+1)"]
+        F2["Put GEX = abs(Γ) × OI × 100 × S² × 0.01 × (-1)"]
         F3["Net GEX = Call GEX + Put GEX"]
     end
 
@@ -305,9 +305,9 @@ flowchart LR
         L1[Call Wall — max call OI strike]
         L2[Put Wall — max put OI strike]
         L3[Zero Gamma — GEX sign flip<br/>linear interpolation]
-        L4[Max Gamma — highest |GEX| strike]
+        L4["Max Gamma — highest abs(GEX) strike"]
         L5[HVL — highest total OI strike]
-        L6[GEX 1-10 — top 10 by |GEX|]
+        L6["GEX 1-10 — top 10 by abs(GEX)"]
     end
 
     subgraph Regime["Regime Classification"]
