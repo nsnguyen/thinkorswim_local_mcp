@@ -528,13 +528,16 @@ condition: dict | None = None  # For "add": {"type": "gex_flip", "symbol": "SPX"
         {
             "type": "gex_flip",
             "symbol": "SPX",
-            "message": "SPX GEX regime flipped NEGATIVE at ~11:42 AM. Zero gamma: 5,180. Spot: 5,165.",
-            "severity": "high",
-            "action_suggestion": "Consider tightening short strikes or adding hedges."
+            "triggered": true,
+            "previous_regime": "positive",
+            "current_regime": "negative",
+            "zero_gamma": 5180.0,
+            "spot": 5165.0,
+            "triggered_at": "2025-03-26T11:42:00Z"
         }
     ],
     "alerts_clear": [
-        {"type": "vix_above", "status": "VIX at 18.5, below threshold of 25"}
+        {"type": "vix_above", "triggered": false, "current_value": 18.5, "threshold": 25}
     ]
 }
 ```

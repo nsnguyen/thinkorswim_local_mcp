@@ -4,6 +4,22 @@
 
 A **Model Context Protocol (MCP) server** that gives Claude direct access to Charles Schwab market data and GEX (Gamma Exposure) analysis. Designed for **options premium selling** — weekly SPX iron condors, directional credit spreads, and intraday regime detection.
 
+## Design Philosophy
+
+**MCP = calculator. Claude = analyst.**
+
+| MCP Server (deterministic) | Claude (judgment) |
+|---|---|
+| Fetch prices, chains, greeks from Schwab | Interpret what the data means for positioning |
+| Compute GEX per strike across 500 strikes | Decide if +GEX regime favors selling premium today |
+| Calculate POP via Black-Scholes integration | Choose which strikes to sell based on context |
+| Rank IV percentile against 60-day history | Weigh tradeoffs between candidates |
+| Check if VIX crossed a threshold (boolean) | Explain risk and recommend position sizing |
+
+**Rule of thumb:** If the answer is the same every time given the same inputs → MCP. If it depends on context, experience, or tradeoffs → Claude.
+
+The MCP never outputs opinions, recommendations, or interpretations. It returns numbers, labels (based on thresholds), and structured data. Claude does all the thinking.
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                     Claude Desktop                       │
