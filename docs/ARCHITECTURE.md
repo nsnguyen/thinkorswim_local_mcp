@@ -287,47 +287,49 @@ Resources provide **background context** that Claude can read without explicit t
 ## GEX Calculation Pipeline
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph Input["Data Input"]
+        direction LR
         OC[Options Chain<br/>from Schwab]
         SP[Spot Price]
     end
 
     subgraph Calc["Per-Strike Calculation"]
-        direction TB
+        direction LR
         F1["Call GEX = abs(Γ) × OI × 100 × S² × 0.01 × (+1)"]
         F2["Put GEX = abs(Γ) × OI × 100 × S² × 0.01 × (-1)"]
+    end
+
+    subgraph Net["Aggregation"]
         F3["Net GEX = Call GEX + Put GEX"]
     end
 
     subgraph Levels["Level Extraction (0-45 DTE)"]
-        direction TB
-        L1[Call Wall — max call OI strike]
-        L2[Put Wall — max put OI strike]
-        L3[Zero Gamma — GEX sign flip<br/>linear interpolation]
-        L4["Max Gamma — highest abs(GEX) strike"]
-        L5[HVL — highest total OI strike]
-        L6["GEX 1-10 — top 10 by abs(GEX)"]
+        direction LR
+        L1[Call Wall<br/>max call OI]
+        L2[Put Wall<br/>max put OI]
+        L3[Zero Gamma<br/>GEX sign flip]
+        L4["Max Gamma<br/>highest abs(GEX)"]
+        L5[HVL<br/>highest total OI]
+        L6["GEX 1-10<br/>top 10 by abs(GEX)"]
     end
 
     subgraph Regime["Regime Classification"]
-        direction TB
         R1{Spot vs Zero Gamma?}
-        R2["+GEX Regime<br/>Mean-reverting<br/>Dealers dampen moves"]
-        R3["-GEX Regime<br/>Trending<br/>Dealers amplify moves"]
+        R2["+GEX Regime<br/>Mean-reverting"]
+        R3["-GEX Regime<br/>Trending"]
     end
 
-    OC --> Calc
-    SP --> Calc
-    F1 --> F3
-    F2 --> F3
-    Calc --> Levels
+    Input --> Calc
+    Calc --> Net
+    Net --> Levels
     Levels --> Regime
     R1 -->|Above| R2
     R1 -->|Below| R3
 
     style Input fill:#fff3e0
     style Calc fill:#e3f2fd
+    style Net fill:#e3f2fd
     style Levels fill:#e8f5e9
     style Regime fill:#fce4ec
 ```
