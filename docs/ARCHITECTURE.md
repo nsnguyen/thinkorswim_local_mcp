@@ -65,105 +65,119 @@ The MCP never outputs opinions, recommendations, or interpretations. It returns 
 
 ---
 
-## System Architecture (Mermaid)
+## System Architecture
+
+### High-Level View
+
+Clean layered architecture — data flows down, results flow up.
+
+```mermaid
+graph LR
+    subgraph User["YOU + CLAUDE (brain)"]
+        direction TB
+        U1["Interpret data"]
+        U2["Make decisions"]
+        U3["Pick trades"]
+    end
+
+    subgraph MCP["MCP SERVER (calculator)"]
+        direction TB
+        M1["Tools · Resources · Prompts"]
+        M2["GEX Engine · Vol Analyzer · Trade Math"]
+        M3["Schwab Client · Cache · Auth"]
+    end
+
+    subgraph API["SCHWAB API"]
+        direction TB
+        A1["Chains · Quotes · History · Movers"]
+    end
+
+    User <---->|"MCP Protocol (stdio)"| MCP
+    MCP <---->|"HTTPS (120 req/min)"| API
+
+    style User fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    style MCP fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style API fill:#fff8e1,stroke:#f57f17,color:#e65100
+```
+
+### Detailed Layer Breakdown
 
 ```mermaid
 graph TB
-    subgraph Claude["Claude Desktop / Claude Code"]
-        User[User Conversation]
+    subgraph L1["Layer 1 — MCP Interface"]
+        direction LR
+        T["🔧 Tools<br/>Claude calls these"]
+        R["📄 Resources<br/>Ambient context"]
+        P["📋 Prompts<br/>Reusable workflows"]
     end
 
-    subgraph MCP["MCP Server (Python, stdio)"]
+    subgraph L2["Layer 2 — Computation Engine"]
+        direction LR
+        GEX["GEX Calculator<br/>per-strike GEX, levels,<br/>walls, zero gamma"]
+        VOL["Vol Analyzer<br/>IV skew, term structure,<br/>surface, VIX context"]
+        TM["Trade Math<br/>POP, P&L, breakevens,<br/>expected move"]
+    end
+
+    subgraph L3["Layer 3 — Data Access"]
+        direction LR
+        SC["Schwab Client<br/>API wrapper"]
+        CA["Disk Cache<br/>per-DTE-range TTL"]
+        TK["Token Manager<br/>OAuth 2.0 lifecycle"]
+    end
+
+    subgraph L4["Layer 4 — External"]
+        direction LR
+        API["Schwab REST API<br/>chains · quotes · history<br/>movers · hours · instruments"]
+    end
+
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+
+    style L1 fill:#e8f5e9,stroke:#2e7d32
+    style L2 fill:#e3f2fd,stroke:#1565c0
+    style L3 fill:#f3e5f5,stroke:#7b1fa2
+    style L4 fill:#fff8e1,stroke:#f57f17
+```
+
+### What Lives Where
+
+```mermaid
+graph LR
+    subgraph Tools["MCP Tools"]
         direction TB
-
-        subgraph Tools["MCP Tools (Claude calls these)"]
-            direction TB
-            T1[get_options_chain]
-            T2[get_gex_levels]
-            T3[get_quote]
-            T4[get_price_history]
-            T5[get_futures_quote]
-            T6[analyze_volatility]
-            T7[evaluate_trade]
-            T8[get_market_movers]
-            T9[get_market_hours]
-            T10[search_instruments]
-            T11[check_alerts]
-            T12[get_gex_summary]
-            T13[get_iv_surface]
-            T14[analyze_term_structure]
+        subgraph TD1[" Market Data "]
+            t1[get_quote]
+            t2[get_options_chain]
+            t3[get_price_history]
+            t4[get_futures_quote]
+            t5[get_market_movers]
+            t6[get_market_hours]
+            t7[search_instruments]
+            t8[get_expiration_dates]
         end
-
-        subgraph Resources["MCP Resources (context for Claude)"]
-            R1["schwab://market-status"]
-            R2["schwab://vix-dashboard"]
-            R3["schwab://gex-regime/{symbol}"]
-            R4["schwab://watchlist"]
+        subgraph TD2[" GEX & Volatility "]
+            t9[get_gex_levels]
+            t10[get_gex_summary]
+            t11[get_0dte_levels]
+            t12[analyze_volatility]
+            t13[get_iv_surface]
+            t14[analyze_term_structure]
+            t15[get_vix_context]
+            t16[get_expected_move]
+            t17[estimate_charm_shift]
+            t18[estimate_vanna_shift]
         end
-
-        subgraph Prompts["MCP Prompts (reusable workflows)"]
-            P1[morning_briefing]
-            P2[iron_condor_scan]
-            P3[regime_check]
-            P4[intraday_levels]
-        end
-
-        subgraph Engine["Core Engine (Math Only — No Decisions)"]
-            GEX[GEX Calculator]
-            VOL[Volatility Analyzer]
-            TMATH[Trade Math<br/>POP, P&L, Greeks]
-            ALERT[Alert Evaluator]
-        end
-
-        subgraph Data["Data Layer"]
-            SC[Schwab Client]
-            CACHE[Disk Cache]
-            TOKEN[Token Manager]
+        subgraph TD3[" Trade Math "]
+            t19[evaluate_trade]
+            t20[check_alerts]
         end
     end
 
-    subgraph Schwab["Schwab API"]
-        API_CHAINS["/chains"]
-        API_QUOTES["/quotes"]
-        API_HISTORY["/pricehistory"]
-        API_MOVERS["/movers"]
-        API_HOURS["/markets"]
-        API_SEARCH["/instruments"]
-    end
-
-    User <-->|MCP Protocol| Tools
-    User <-->|MCP Protocol| Resources
-    User <-->|MCP Protocol| Prompts
-
-    Tools --> Engine
-    Resources --> Engine
-    Prompts --> Tools
-
-    Engine --> Data
-    GEX --> SC
-    VOL --> SC
-    TMATH --> MODELS
-    ALERT --> GEX
-    ALERT --> VOL
-
-    SC --> CACHE
-    SC --> TOKEN
-    TOKEN --> API_CHAINS
-    SC --> API_CHAINS
-    SC --> API_QUOTES
-    SC --> API_HISTORY
-    SC --> API_MOVERS
-    SC --> API_HOURS
-    SC --> API_SEARCH
-
-    style Claude fill:#f0f4ff,stroke:#4a6cf7
-    style MCP fill:#f8f9fa,stroke:#333
-    style Tools fill:#e8f5e9,stroke:#2e7d32
-    style Resources fill:#fff3e0,stroke:#ef6c00
-    style Prompts fill:#fce4ec,stroke:#c62828
-    style Engine fill:#e3f2fd,stroke:#1565c0
-    style Data fill:#f3e5f5,stroke:#7b1fa2
-    style Schwab fill:#fff8e1,stroke:#f57f17
+    style Tools fill:#f8f9fa,stroke:#333
+    style TD1 fill:#e8f5e9,stroke:#2e7d32
+    style TD2 fill:#e3f2fd,stroke:#1565c0
+    style TD3 fill:#fff3e0,stroke:#ef6c00
 ```
 
 ---
@@ -376,53 +390,57 @@ thinkorswim_local_mcp/
 ## Module Dependency Graph
 
 ```mermaid
-graph TD
-    SERVER[server.py<br/>MCP Entry Point] --> TOOLS_MD[tools/market_data.py]
-    SERVER --> TOOLS_GEX[tools/gex.py]
-    SERVER --> TOOLS_VOL[tools/volatility.py]
-    SERVER --> TOOLS_TMATH
-    SERVER --> RES[resources/market_resources.py]
-    SERVER --> PROMPTS[prompts/workflows.py]
+graph LR
+    subgraph Entry["server.py"]
+        S[MCP Entry Point]
+    end
 
-    TOOLS_MD --> CLIENT[data/schwab_client.py]
-    TOOLS_GEX --> GCALC[core/gex_calculator.py]
-    TOOLS_GEX --> GLEV[core/gex_levels.py]
-    TOOLS_VOL --> CVOL[core/volatility.py]
-    TOOLS_VOL --> IVC[core/iv_context.py]
-    TOOLS_TMATH[tools/trade_math.py] --> TMATH[core/trade_math.py]
+    subgraph Tools["tools/"]
+        direction TB
+        TM[market_data.py]
+        TG[gex.py]
+        TV[volatility.py]
+        TT[trade_math.py]
+    end
 
-    RES --> CLIENT
-    RES --> VIX[core/vix_context.py]
-    PROMPTS --> TOOLS_MD
-    PROMPTS --> TOOLS_GEX
+    subgraph Core["core/"]
+        direction TB
+        GC[gex_calculator.py]
+        GL[gex_levels.py]
+        CV[volatility.py]
+        IC[iv_context.py]
+        VX[vix_context.py]
+        MT[trade_math.py]
+    end
 
-    GCALC --> CLIENT
-    GCALC --> MODELS[data/models.py]
-    GLEV --> GCALC
-    CVOL --> CLIENT
-    IVC --> CLIENT
-    VIX --> CLIENT
+    subgraph Data["data/"]
+        direction TB
+        CL[schwab_client.py]
+        MO[models.py]
+        CH[cache.py]
+        TK[token_manager.py]
+    end
 
-    CLIENT --> CACHE[data/cache.py]
-    CLIENT --> TOKEN[data/token_manager.py]
+    S --> Tools
+    TM --> CL
+    TG --> GC
+    TG --> GL
+    TV --> CV
+    TV --> IC
+    TT --> MT
+    GC --> CL
+    GC --> MO
+    GL --> GC
+    CV --> CL
+    IC --> CL
+    VX --> CL
+    CL --> CH
+    CL --> TK
 
-    style SERVER fill:#4a6cf7,color:#fff
-    style TOOLS_MD fill:#66bb6a,color:#fff
-    style TOOLS_GEX fill:#66bb6a,color:#fff
-    style TOOLS_VOL fill:#66bb6a,color:#fff
-    style TOOLS_TMATH fill:#66bb6a,color:#fff
-    style RES fill:#ffa726,color:#fff
-    style PROMPTS fill:#ef5350,color:#fff
-    style GCALC fill:#42a5f5,color:#fff
-    style GLEV fill:#42a5f5,color:#fff
-    style CVOL fill:#42a5f5,color:#fff
-    style IVC fill:#42a5f5,color:#fff
-    style VIX fill:#42a5f5,color:#fff
-    style TMATH fill:#42a5f5,color:#fff
-    style CLIENT fill:#ab47bc,color:#fff
-    style CACHE fill:#ab47bc,color:#fff
-    style TOKEN fill:#ab47bc,color:#fff
-    style MODELS fill:#ab47bc,color:#fff
+    style Entry fill:#4a6cf7,color:#fff
+    style Tools fill:#e8f5e9,stroke:#2e7d32
+    style Core fill:#e3f2fd,stroke:#1565c0
+    style Data fill:#f3e5f5,stroke:#7b1fa2
 ```
 
 ---
