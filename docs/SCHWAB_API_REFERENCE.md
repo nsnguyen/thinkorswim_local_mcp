@@ -1,5 +1,7 @@
 # Schwab Developer API — Quick Reference
 
+**Python client:** `schwabdev>=3.0.0` ([pypi.org/project/schwabdev](https://pypi.org/project/schwabdev/))
+
 ## Base URL
 
 ```

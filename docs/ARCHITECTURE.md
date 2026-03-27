@@ -622,7 +622,7 @@ flowchart TB
 |---|---|---|
 | **Language** | Python 3.11+ | MCP SDK support, your existing GEX tool is Python |
 | **MCP SDK** | `mcp` (official Python SDK) | First-party, stable, stdio transport |
-| **Schwab Client** | `schwab-py` | Most mature Python wrapper, auto token refresh |
+| **Schwab Client** | `schwabdev` | Already used in gex-tool, proven, auto token refresh |
 | **Cache** | `diskcache` | Same as gex-tool, fast, reliable |
 | **Data Models** | `pydantic` | Validation, serialization, type safety |
 | **Math** | `numpy` | GEX calculations, interpolation |
@@ -633,7 +633,7 @@ flowchart TB
 
 ```
 mcp>=1.0.0
-schwab-py>=1.0.0
+schwabdev>=3.0.0
 pydantic>=2.0
 numpy>=1.24
 diskcache>=5.6
