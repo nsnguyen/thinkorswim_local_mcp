@@ -1,12 +1,18 @@
 # MCP Tools — Detailed Specification
 
+## Design Philosophy
+
+**The MCP is a data pipeline + calculator. Claude is the brain.**
+
+The MCP server provides raw market data, computed metrics (GEX, IV, greeks), and pure math (P&L, POP, breakevens). It never makes trading decisions, recommendations, or interpretations. Claude uses its intelligence to analyze the data and advise the user.
+
 ## Tool Design Principles
 
 1. **Return structured data** — JSON objects that Claude can reason about
 2. **Sensible defaults** — Every tool works with minimal parameters
-3. **GEX-aware** — Strategy tools incorporate GEX levels into recommendations
+3. **Data + math only** — No opinions, rankings, or recommendations in tool output
 4. **Cacheable** — Tools leverage the cache layer; repeated calls are fast
-5. **Composable** — Tools can be chained: get_gex_levels → find_iron_condors
+5. **Composable** — Tools can be chained: get_gex_levels → get_options_chain → evaluate_trade
 
 ---
 
@@ -252,7 +258,6 @@ include_0dte: bool = True
 
     "regime": {
         "type": "positive",           # "positive" or "negative"
-        "description": "Mean-reverting — dealers dampen moves",
         "zero_gamma": 5180.0,
         "spot_vs_zero_gamma": "above"  # spot is above zero gamma → +GEX
     },
@@ -278,12 +283,6 @@ include_0dte: bool = True
         "max_gamma": {"price": 5250.0}
     },
 
-    "trading_zones": {
-        "strong_support": [5100.0, 5150.0],
-        "support": [5180.0, 5200.0],
-        "resistance": [5280.0, 5300.0],
-        "strong_resistance": [5350.0]
-    }
 }
 ```
 
@@ -393,8 +392,7 @@ VIX regime and context.
     "term_structure": {
         "vix_vix3m_ratio": 0.96,
         "shape": "contango"        # "contango", "backwardation", "flat"
-    },
-    "interpretation": "Moderate VIX in contango. Normal conditions for premium selling."
+    }
 }
 ```
 
@@ -440,8 +438,7 @@ hours_forward: float = 3.0    # How many hours to project
     "projected_zero_gamma": 5195.0,
     "shift_direction": "up",
     "current_total_gex": 450000000,
-    "projected_total_gex": 380000000,
-    "interpretation": "GEX decaying as theta burns off. Zero gamma moving up toward spot."
+    "projected_total_gex": 380000000
 }
 ```
 
@@ -462,106 +459,19 @@ iv_change_pct: float = 2.0    # e.g., +2 = VIX goes up 2 points
     "projected_zero_gamma": 5160.0,
     "iv_change_applied": 2.0,
     "current_total_gex": 450000000,
-    "projected_total_gex": 320000000,
-    "interpretation": "IV spike reduces positive GEX. Zero gamma drops, increasing chance of regime flip."
+    "projected_total_gex": 320000000
 }
 ```
 
 ---
 
-## Strategy Tools
-
-### `find_iron_condors`
-
-Scan for iron condors matching criteria, with GEX-aware strike selection.
-
-```python
-# Parameters
-symbol: str = "SPX"
-target_dte: int = 5              # Target days to expiration
-short_call_delta: float = 0.10   # Max delta for short call (default 10Δ)
-short_put_delta: float = -0.10   # Max delta for short put (default -10Δ)
-wing_width: int = 25             # Width of each spread (points)
-min_credit: float | None = None  # Minimum total credit
-max_candidates: int = 5          # Number of results
-respect_gex_walls: bool = True   # Keep short strikes inside GEX walls
-
-# Returns
-{
-    "symbol": "SPX",
-    "spot": 5250.50,
-    "regime": "positive",
-    "candidates": [
-        {
-            "rank": 1,
-            "expiration": "2025-03-28",
-            "dte": 2,
-
-            "short_call": {"strike": 5325, "delta": 0.08, "bid": 2.40},
-            "long_call":  {"strike": 5350, "delta": 0.04, "ask": 1.10},
-            "short_put":  {"strike": 5150, "delta": -0.09, "bid": 3.20},
-            "long_put":   {"strike": 5125, "delta": -0.05, "ask": 1.80},
-
-            "total_credit": 2.70,
-            "max_profit": 270,         # credit × 100
-            "max_loss": 2230,          # (width - credit) × 100
-            "breakeven_upper": 5327.70,
-            "breakeven_lower": 5147.30,
-            "risk_reward": "1:8.3",
-            "pop": 82.5,              # Probability of profit (%)
-
-            "gex_context": {
-                "call_wall": 5300,
-                "put_wall": 5100,
-                "short_call_vs_call_wall": "below (25 pts inside)",
-                "short_put_vs_put_wall": "above (50 pts inside)",
-                "verdict": "Well-protected by GEX walls"
-            }
-        },
-        ...
-    ]
-}
-```
-
----
-
-### `find_spreads`
-
-Find credit or debit spreads.
-
-```python
-# Parameters
-symbol: str = "SPX"
-spread_type: str = "credit"     # "credit" or "debit"
-direction: str = "put"          # "call" (bearish credit/bullish debit) or "put" (bullish credit/bearish debit)
-target_dte: int = 5
-short_delta: float = 0.15       # Short strike delta
-width: int = 25                 # Spread width (points)
-max_candidates: int = 5
-
-# Returns
-{
-    "candidates": [
-        {
-            "type": "bull_put_credit_spread",
-            "short_strike": 5150,
-            "long_strike": 5125,
-            "credit": 1.40,
-            "max_profit": 140,
-            "max_loss": 2360,
-            "pop": 85.2,
-            "gex_context": { ... }
-        },
-        ...
-    ]
-}
-```
-
----
+## Trade Math Tools (Pure Calculation — No Opinions)
 
 ### `evaluate_trade`
 
-Analyze a specific trade setup.
+Calculate P&L, breakevens, POP, and net greeks for a trade that **Claude has selected**.
+
+Claude picks the strikes and structure. This tool just does the math to verify.
 
 ```python
 # Parameters
@@ -570,57 +480,26 @@ legs: list[dict]   # [{"strike": 5300, "type": "CALL", "action": "SELL", "expira
 
 # Returns
 {
-    "strategy": "iron_condor",
+    "strategy_type": "iron_condor",   # auto-detected from legs
     "max_profit": 270,
     "max_loss": 2230,
     "breakeven_upper": 5327.70,
     "breakeven_lower": 5147.30,
-    "pop": 82.5,
+    "pop": 82.5,                      # Probability of profit (%)
     "expected_value": 45.00,
-    "risk_reward": "1:8.3",
+    "risk_reward_ratio": 8.3,         # max_loss / max_profit
     "greeks": {
         "net_delta": -0.02,
         "net_gamma": -0.003,
         "net_theta": 12.50,
         "net_vega": -8.20
     },
-    "gex_analysis": {
-        "short_strikes_inside_walls": true,
-        "regime_favorable": true,
-        "notes": "Positive GEX regime supports mean-reversion. Short strikes well inside walls."
-    }
-}
-```
-
----
-
-### `get_regime_signal`
-
-Quick regime assessment combining GEX + IV + VIX.
-
-```python
-# Parameters
-symbol: str = "SPX"
-
-# Returns
-{
-    "symbol": "SPX",
-    "timestamp": "2025-03-26T14:30:00Z",
-
-    "gex_regime": "positive",
-    "gex_bias": "Dealers long gamma — will dampen moves. Mean-reversion expected.",
-
-    "directional_bias": "neutral",
-    "directional_detail": "Spot near zero gamma. No strong directional lean.",
-
-    "vol_posture": "sell",
-    "vol_detail": "IV rank 35, moderate VIX, IV-RV premium fair. Conditions support premium selling.",
-
-    "composite_signal": "SELL_PREMIUM",
-    "confidence": 0.72,
-
-    "for_iron_condors": "Favorable. Positive GEX supports range-bound. Consider standard width.",
-    "for_directional_spreads": "No strong edge. Wait for regime signal or trend confirmation."
+    "legs": [
+        {"strike": 5325, "type": "CALL", "action": "SELL", "bid": 2.40, "ask": 2.60, "delta": 0.08, "gamma": 0.002},
+        {"strike": 5350, "type": "CALL", "action": "BUY", "bid": 1.00, "ask": 1.10, "delta": 0.04, "gamma": 0.001},
+        {"strike": 5150, "type": "PUT", "action": "SELL", "bid": 3.10, "ask": 3.30, "delta": -0.09, "gamma": 0.002},
+        {"strike": 5125, "type": "PUT", "action": "BUY", "bid": 1.70, "ask": 1.80, "delta": -0.05, "gamma": 0.001}
+    ]
 }
 ```
 

@@ -25,7 +25,7 @@ A **Model Context Protocol (MCP) server** that gives Claude direct access to Cha
 │  ┌────▼───────────▼─────────────▼──────────────▼─────┐  │
 │  │              Core Engine                           │  │
 │  │  ┌──────────┐ ┌──────────┐ ┌────────────────────┐ │  │
-│  │  │ GEX Calc │ │ Vol Anlz │ │ Strategy Engine    │ │  │
+│  │  │ GEX Calc │ │ Vol Anlz │ │ Trade Math         │ │  │
 │  │  └──────────┘ └──────────┘ └────────────────────┘ │  │
 │  └───────────────────────┬───────────────────────────┘  │
 │                          │                               │
@@ -61,21 +61,21 @@ graph TB
         direction TB
 
         subgraph Tools["MCP Tools (Claude calls these)"]
+            direction TB
             T1[get_options_chain]
             T2[get_gex_levels]
             T3[get_quote]
             T4[get_price_history]
             T5[get_futures_quote]
             T6[analyze_volatility]
-            T7[find_spreads]
-            T8[find_iron_condors]
-            T9[get_market_movers]
-            T10[get_market_hours]
-            T11[search_instruments]
-            T12[check_alerts]
-            T13[get_gex_summary]
-            T14[get_iv_surface]
-            T15[analyze_term_structure]
+            T7[evaluate_trade]
+            T8[get_market_movers]
+            T9[get_market_hours]
+            T10[search_instruments]
+            T11[check_alerts]
+            T12[get_gex_summary]
+            T13[get_iv_surface]
+            T14[analyze_term_structure]
         end
 
         subgraph Resources["MCP Resources (context for Claude)"]
@@ -92,10 +92,10 @@ graph TB
             P4[intraday_levels]
         end
 
-        subgraph Engine["Core Engine"]
+        subgraph Engine["Core Engine (Math Only — No Decisions)"]
             GEX[GEX Calculator]
             VOL[Volatility Analyzer]
-            STRAT[Strategy Engine]
+            TMATH[Trade Math<br/>POP, P&L, Greeks]
             ALERT[Alert Evaluator]
         end
 
@@ -126,8 +126,7 @@ graph TB
     Engine --> Data
     GEX --> SC
     VOL --> SC
-    STRAT --> GEX
-    STRAT --> VOL
+    TMATH --> MODELS
     ALERT --> GEX
     ALERT --> VOL
 
@@ -212,15 +211,19 @@ sequenceDiagram
 | `estimate_charm_shift` | Project GEX shift N hours forward (time decay) | charm ≈ -θ/S |
 | `estimate_vanna_shift` | Project GEX shift for IV change | vanna ≈ ν/S |
 
-### Strategy Tools
+### Trade Math Tools (Pure Calculation — No Opinions)
 
 | Tool | Description | Logic |
 |------|-------------|-------|
-| `find_iron_condors` | Scan for iron condors matching criteria (POP, width, premium) | Filter by delta, width, credit |
-| `find_spreads` | Find credit/debit spreads (vertical, calendar) | Strike selection by delta/width |
-| `evaluate_trade` | Analyze a specific trade: max profit, max loss, breakevens, POP | Options math |
-| `get_regime_signal` | Current regime: positive/negative GEX, directional bias, vol posture | GEX + IV + VIX composite |
-| `check_alerts` | Evaluate watchlist conditions (IV rank threshold, GEX flip, etc.) | Condition engine |
+| `evaluate_trade` | Calculate P&L, breakevens, POP, net greeks for a given trade | Options math only |
+| `check_alerts` | Evaluate watchlist conditions (IV rank threshold, GEX flip, etc.) | Boolean condition checks |
+
+**What Claude does (NOT the MCP):**
+- Interpret GEX regime and decide what it means for positioning
+- Choose iron condor strikes based on GEX levels + IV + VIX context
+- Rank trade candidates and recommend the best one
+- Assess risk and suggest position sizing
+- Decide directional bias and timing
 
 ### MCP Resources (Ambient Context)
 
@@ -311,16 +314,16 @@ thinkorswim_local_mcp/
 │   │   ├── market_data.py       # Quotes, chains, history, movers, hours
 │   │   ├── gex.py               # GEX levels, summary, 0DTE, projections
 │   │   ├── volatility.py        # IV analysis, skew, term structure, surface
-│   │   └── strategy.py          # Spreads, iron condors, regime, alerts
+│   │   └── trade_math.py        # Evaluate trade P&L/POP, alerts
 │   │
-│   ├── core/                    # Business logic (ported from gex-tool)
+│   ├── core/                    # Pure math & calculations (no opinions)
 │   │   ├── __init__.py
 │   │   ├── gex_calculator.py    # GEX formula, per-strike calc, aggregates
 │   │   ├── gex_levels.py        # Level extraction, zero gamma, walls
 │   │   ├── volatility.py        # IV skew, butterfly, term structure
 │   │   ├── iv_context.py        # IV percentile, rank, realized vol
 │   │   ├── vix_context.py       # VIX regime, percentile, term structure
-│   │   └── strategy_engine.py   # Regime signals, trade evaluation, POP
+│   │   └── trade_math.py        # POP calculation, P&L math, breakevens
 │   │
 │   ├── data/                    # Data access layer
 │   │   ├── __init__.py
@@ -358,7 +361,7 @@ graph TD
     SERVER[server.py<br/>MCP Entry Point] --> TOOLS_MD[tools/market_data.py]
     SERVER --> TOOLS_GEX[tools/gex.py]
     SERVER --> TOOLS_VOL[tools/volatility.py]
-    SERVER --> TOOLS_STRAT[tools/strategy.py]
+    SERVER --> TOOLS_TMATH
     SERVER --> RES[resources/market_resources.py]
     SERVER --> PROMPTS[prompts/workflows.py]
 
@@ -367,8 +370,7 @@ graph TD
     TOOLS_GEX --> GLEV[core/gex_levels.py]
     TOOLS_VOL --> CVOL[core/volatility.py]
     TOOLS_VOL --> IVC[core/iv_context.py]
-    TOOLS_STRAT --> STRAT[core/strategy_engine.py]
-    TOOLS_STRAT --> GCALC
+    TOOLS_TMATH[tools/trade_math.py] --> TMATH[core/trade_math.py]
 
     RES --> CLIENT
     RES --> VIX[core/vix_context.py]
@@ -381,9 +383,6 @@ graph TD
     CVOL --> CLIENT
     IVC --> CLIENT
     VIX --> CLIENT
-    STRAT --> GCALC
-    STRAT --> GLEV
-    STRAT --> CVOL
 
     CLIENT --> CACHE[data/cache.py]
     CLIENT --> TOKEN[data/token_manager.py]
@@ -392,7 +391,7 @@ graph TD
     style TOOLS_MD fill:#66bb6a,color:#fff
     style TOOLS_GEX fill:#66bb6a,color:#fff
     style TOOLS_VOL fill:#66bb6a,color:#fff
-    style TOOLS_STRAT fill:#66bb6a,color:#fff
+    style TOOLS_TMATH fill:#66bb6a,color:#fff
     style RES fill:#ffa726,color:#fff
     style PROMPTS fill:#ef5350,color:#fff
     style GCALC fill:#42a5f5,color:#fff
@@ -400,7 +399,7 @@ graph TD
     style CVOL fill:#42a5f5,color:#fff
     style IVC fill:#42a5f5,color:#fff
     style VIX fill:#42a5f5,color:#fff
-    style STRAT fill:#42a5f5,color:#fff
+    style TMATH fill:#42a5f5,color:#fff
     style CLIENT fill:#ab47bc,color:#fff
     style CACHE fill:#ab47bc,color:#fff
     style TOKEN fill:#ab47bc,color:#fff
@@ -532,40 +531,44 @@ flowchart TB
 
 ---
 
-## Strategy Engine — Iron Condor Workflow
+## Iron Condor Workflow — Claude as the Brain
+
+The MCP provides data and math. **Claude makes all the decisions.**
 
 ```mermaid
 flowchart TB
-    Start[User: Find me a weekly SPX iron condor] --> GEX[Get GEX levels]
-    GEX --> Regime{GEX Regime?}
+    Start[User: Find me a weekly SPX iron condor] --> D1
 
-    Regime -->|+GEX Mean-reverting| Wide["Wider wings OK<br/>Sell closer to ATM<br/>Higher premium"]
-    Regime -->|-GEX Trending| Narrow["Narrower wings<br/>Sell further OTM<br/>Lower premium, safer"]
+    subgraph MCP["MCP Server (data + math)"]
+        D1[get_gex_levels] --> D2[analyze_volatility]
+        D2 --> D3[get_vix_context]
+        D3 --> D4[get_options_chain]
+    end
 
-    Wide --> IV[Check IV context]
-    Narrow --> IV
+    D4 --> Claude
 
-    IV --> IVH{IV Rank?}
-    IVH -->|High > 50| Sell["Favorable for selling premium<br/>Target higher credit"]
-    IVH -->|Low < 30| Caution["Low IV = low premium<br/>Consider skipping or going wider"]
+    subgraph Claude["Claude's Brain (decisions)"]
+        direction TB
+        C1["Interpret GEX regime<br/>+GEX = mean-reverting → wider wings OK<br/>-GEX = trending → go further OTM"]
+        C2["Assess IV context<br/>High IV rank → favorable for selling<br/>Low IV → maybe skip or go wider"]
+        C3["Select strikes using:<br/>• GEX walls as boundaries<br/>• Delta targets (10-16Δ)<br/>• Width (25-50 pts for SPX)"]
+        C4["Rank candidates by:<br/>• Credit/width ratio<br/>• Distance from GEX walls<br/>• Risk/reward"]
+        C1 --> C2 --> C3 --> C4
+    end
 
-    Sell --> Scan[Scan options chain]
-    Caution --> Scan
+    C4 --> Verify
 
-    Scan --> Filter["Filter by:<br/>• Delta (short strikes 10-16Δ)<br/>• Width (25-50 pts for SPX)<br/>• Min credit target<br/>• DTE (4-7 days)"]
+    subgraph MCP2["MCP Server (verify math)"]
+        Verify[evaluate_trade<br/>P&L, POP, breakevens, net greeks]
+    end
 
-    Filter --> Walls["Check against GEX levels:<br/>• Short call below call wall<br/>• Short put above put wall<br/>• Both outside zero gamma"]
-
-    Walls --> Rank["Rank candidates by:<br/>• Credit/width ratio<br/>• POP (probability of profit)<br/>• Distance from GEX walls<br/>• Risk/reward"]
-
-    Rank --> Output["Return top 3 candidates<br/>with full analysis"]
+    Verify --> Output["Claude presents top picks<br/>with reasoning + risk analysis"]
 
     style Start fill:#f0f4ff,stroke:#4a6cf7
-    style Wide fill:#c8e6c9
-    style Narrow fill:#ffcdd2
-    style Sell fill:#c8e6c9
-    style Caution fill:#fff3e0
-    style Output fill:#e3f2fd
+    style MCP fill:#e8f5e9,stroke:#2e7d32
+    style Claude fill:#e3f2fd,stroke:#1565c0
+    style MCP2 fill:#e8f5e9,stroke:#2e7d32
+    style Output fill:#f0f4ff,stroke:#4a6cf7
 ```
 
 ---
@@ -660,7 +663,7 @@ Add to `claude_desktop_config.json`:
 | `src/data/schwab_fetcher.py` | `src/data/schwab_client.py` | Refactored to use schwab-py |
 | `src/data/cache_manager.py` | `src/data/cache.py` | Same pattern, simplified |
 | `src/data/data_models.py` | `src/data/models.py` | Pydantic v2 models |
-| `src/web/strategy.py` | `src/core/strategy_engine.py` | Decoupled from web, enhanced for MCP |
+| `src/web/strategy.py` | **Removed** | Claude handles all strategy/decisions directly |
 | `src/web/app.py` | **Removed** | MCP replaces the web dashboard |
 | `src/export/` | **Removed** | Claude formats output directly |
 | `src/auth/` | `src/data/token_manager.py` | Simplified, schwab-py handles most of it |
@@ -687,12 +690,10 @@ Add to `claude_desktop_config.json`:
 - `analyze_volatility`, `get_vix_context`, `get_iv_surface` tools
 - MCP resources (market status, VIX dashboard, GEX regime)
 
-### Phase 4 — Strategy & Trading
-- Strategy engine: regime signals, directional bias
-- Iron condor scanner with GEX-aware strike selection
-- Spread finder (credit spreads, calendars)
-- Trade evaluator (POP, max profit/loss, breakevens)
-- Alert condition engine
+### Phase 4 — Trade Math & Alerts
+- Trade evaluator: POP calculation, max profit/loss, breakevens, net greeks
+- Alert condition engine (boolean checks, state persistence)
+- No strategy/recommendation logic — Claude handles all decisions
 
 ### Phase 5 — Prompts & Polish
 - MCP prompts (morning briefing, iron condor scan, regime check)
