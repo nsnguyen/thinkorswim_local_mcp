@@ -172,16 +172,24 @@ graph LR
             t17[estimate_charm_shift]
             t18[estimate_vanna_shift]
         end
-        subgraph TD3[" Trade Math "]
-            t19[evaluate_trade]
-            t20[check_alerts]
+        subgraph TD3[" History "]
+            t19[get_gex_history]
+            t20[get_iv_history]
+            t21[get_vix_history]
+            t22[get_expected_move_history]
+            t23[take_snapshot]
+        end
+        subgraph TD4[" Trade Math "]
+            t24[evaluate_trade]
+            t25[check_alerts]
         end
     end
 
     style Tools fill:#f8f9fa,stroke:#333
     style TD1 fill:#e8f5e9,stroke:#2e7d32
     style TD2 fill:#e3f2fd,stroke:#1565c0
-    style TD3 fill:#fff3e0,stroke:#ef6c00
+    style TD3 fill:#f3e5f5,stroke:#7b1fa2
+    style TD4 fill:#fff3e0,stroke:#ef6c00
 ```
 
 ---
@@ -247,6 +255,11 @@ sequenceDiagram
 | `estimate_charm_shift` | Project GEX shift N hours forward (time decay) | charm ≈ -θ/S |
 | `estimate_vanna_shift` | Project GEX shift for IV change | vanna ≈ ν/S |
 | `get_expected_move` | Expected move from ATM straddle + IV-based 1SD | ATM call+put price, Spot × IV × √(DTE/365) |
+| `get_gex_history` | Daily GEX snapshots with regime streaks and trends | Parquet store |
+| `get_iv_history` | Daily IV context with percentile trends | Parquet store |
+| `get_vix_history` | Daily VIX with regime breakdown | Parquet store |
+| `get_expected_move_history` | Expected vs actual move accuracy stats | Parquet store |
+| `take_snapshot` | Manually trigger daily snapshot | Save to Parquet |
 
 ### Trade Math Tools (Pure Calculation — No Opinions)
 
@@ -353,7 +366,8 @@ thinkorswim_local_mcp/
 │   │   ├── market_data.py       # Quotes, chains, history, movers, hours
 │   │   ├── gex.py               # GEX levels, summary, 0DTE, projections
 │   │   ├── volatility.py        # IV analysis, skew, term structure, surface
-│   │   └── trade_math.py        # Evaluate trade P&L/POP, alerts
+│   │   ├── trade_math.py        # Evaluate trade P&L/POP, alerts
+│   │   └── history.py           # GEX/IV/VIX history, expected move accuracy
 │   │
 │   ├── core/                    # Pure math & calculations (no opinions)
 │   │   ├── __init__.py
@@ -362,7 +376,8 @@ thinkorswim_local_mcp/
 │   │   ├── volatility.py        # IV skew, butterfly, term structure
 │   │   ├── iv_context.py        # IV percentile, rank, realized vol
 │   │   ├── vix_context.py       # VIX regime, percentile, term structure
-│   │   └── trade_math.py        # POP calculation, P&L math, breakevens
+│   │   ├── trade_math.py        # POP calculation, P&L math, breakevens
+│   │   └── snapshot_store.py    # Daily Parquet snapshots (GEX, IV, VIX)
 │   │
 │   ├── data/                    # Data access layer
 │   │   ├── __init__.py
@@ -641,6 +656,7 @@ schwabdev>=3.0.0
 pydantic>=2.0
 numpy>=1.24
 diskcache>=5.6
+pyarrow>=14.0
 python-dotenv>=1.0
 httpx>=0.24
 ```
@@ -725,5 +741,6 @@ Detailed implementation docs in [`docs/phases/`](phases/):
 | [**Phase 1 — Foundation**](phases/PHASE-1-FOUNDATION.md) | Scaffolding + data | MCP server, Schwab client, cache, `get_quote`, `get_options_chain` | — |
 | [**Phase 2 — GEX Engine**](phases/PHASE-2-GEX-ENGINE.md) | GEX calculation | GEX calculator, level extraction, `get_gex_levels`, charm/vanna | Phase 1 |
 | [**Phase 3 — Volatility**](phases/PHASE-3-VOLATILITY.md) | IV + VIX analysis | IV skew, term structure, VIX context, expected move, MCP resources | Phase 1 |
+| [**Phase 3B — History**](phases/PHASE-3B-HISTORY.md) | Daily snapshots | GEX/IV/VIX history, expected move accuracy, regime streaks | Phases 2-3 |
 | [**Phase 4 — Trade Math**](phases/PHASE-4-TRADE-MATH.md) | Numbers for trades | POP (Black-Scholes), P&L, breakevens, alert engine | Phases 1-3 |
 | [**Phase 5 — Polish**](phases/PHASE-5-REMAINING-TOOLS.md) | Complete + harden | Remaining tools, MCP prompts, error handling, tests | Phases 1-4 |
