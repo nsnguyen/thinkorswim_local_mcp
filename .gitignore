@@ -3,6 +3,7 @@ tokens/
 cache/
 certs/
 state/
+/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

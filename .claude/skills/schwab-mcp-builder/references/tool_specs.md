@@ -67,7 +67,7 @@
 - Input: `symbol: str = "SPX"`, `expiration: str | None`, `multiple_expirations: bool = False`
 - Returns: expected_move_straddle, expected_move_1sd, upper/lower bounds, atm_strike, atm_iv
 
-## Phase 3B — Historical Snapshots
+## Phase 3B — Historical Snapshots (COMPLETE)
 
 ### get_gex_history / get_iv_history / get_vix_history / get_expected_move_history
 - Daily Parquet snapshots with trend analysis

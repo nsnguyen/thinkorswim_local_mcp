@@ -7,3 +7,7 @@ class GexCalculationError(Exception):
 
 class VolatilityCalculationError(Exception):
     """Raised when volatility calculation encounters invalid or insufficient data."""
+
+
+class SnapshotStoreError(Exception):
+    """Raised when snapshot store operations fail."""

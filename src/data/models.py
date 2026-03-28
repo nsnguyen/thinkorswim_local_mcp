@@ -241,6 +241,173 @@ class ExpectedMoveMulti(BaseModel):
     expirations: list[ExpectedMoveResult]
 
 
+# ── Snapshot Models (Phase 3B) ───────────────────────────────────
+
+
+class GexSnapshot(BaseModel):
+    """Daily GEX snapshot — one row per day per symbol."""
+
+    date: date
+    regime: str  # "positive" | "negative"
+    zero_gamma: float
+    call_wall: float
+    put_wall: float
+    max_gamma: float
+    hvl: float
+    total_gex: float
+    gross_gex: float
+
+
+class IVSnapshot(BaseModel):
+    """Daily IV snapshot — one row per day per symbol."""
+
+    date: date
+    atm_iv: float
+    iv_percentile: float | None
+    iv_rank: float | None
+    realized_vol_20d: float | None
+    iv_rv_premium: float | None
+    skew_25d: float
+    skew_regime: str
+    term_structure_shape: str
+
+
+class VIXSnapshot(BaseModel):
+    """Daily VIX snapshot."""
+
+    date: date
+    vix_level: float
+    vix_percentile: float | None
+    vix_regime: str
+    vix3m: float
+    vix_vix3m_ratio: float
+    term_structure: str  # "contango" | "backwardation" | "flat"
+
+
+class ExpectedMoveSnapshot(BaseModel):
+    """Daily expected move snapshot — one per expiration per symbol."""
+
+    date: date
+    expiration: date
+    expected_move_straddle: float
+    expected_move_1sd: float
+    actual_move: float | None  # backfilled next trading day
+
+
+class RegimeStreak(BaseModel):
+    """Consecutive days of the same GEX regime."""
+
+    type: str
+    days: int
+
+
+class ZeroGammaTrend(BaseModel):
+    """Zero gamma level movement over time."""
+
+    direction: str  # "rising" | "falling" | "flat"
+    change_5d: float | None
+    min_30d: float | None
+    max_30d: float | None
+
+
+class WallMovement(BaseModel):
+    """Call/put wall movement over 5 days."""
+
+    call_wall_5d_change: float | None
+    put_wall_5d_change: float | None
+
+
+class GexHistory(BaseModel):
+    """GEX history with pre-computed trends."""
+
+    symbol: str
+    days: int
+    snapshots: list[GexSnapshot]
+    regime_streak: RegimeStreak
+    zero_gamma_trend: ZeroGammaTrend
+    wall_movement: WallMovement
+
+
+class IVTrend(BaseModel):
+    """IV trend over time."""
+
+    direction: str  # "rising" | "falling" | "flat"
+    change_5d: float | None
+    min_30d: float | None
+    max_30d: float | None
+
+
+class CurrentVsHistory(BaseModel):
+    """Current IV relative to history."""
+
+    iv_percentile: float | None
+    days_above_current: int
+    days_below_current: int
+
+
+class IVHistory(BaseModel):
+    """IV history with pre-computed trends."""
+
+    symbol: str
+    days: int
+    snapshots: list[IVSnapshot]
+    iv_trend: IVTrend
+    current_vs_history: CurrentVsHistory
+
+
+class VIXRegimeHistory(BaseModel):
+    """Count of days in each VIX regime over period."""
+
+    days_low: int
+    days_normal: int
+    days_elevated: int
+    days_high: int
+
+
+class BackwardationEvent(BaseModel):
+    """A period when VIX/VIX3M went into backwardation."""
+
+    date: date
+    ratio: float
+    duration_days: int
+
+
+class VIXHistory(BaseModel):
+    """VIX history with regime breakdown."""
+
+    days: int
+    snapshots: list[VIXSnapshot]
+    regime_history: VIXRegimeHistory
+    backwardation_events: list[BackwardationEvent]
+
+
+class ExpectedMoveAccuracy(BaseModel):
+    """Expected move accuracy statistics."""
+
+    times_exceeded: int
+    times_within: int
+    exceed_rate: float
+    avg_ratio: float | None
+    max_ratio: float | None
+
+
+class ExpectedMoveHistory(BaseModel):
+    """Expected move history with accuracy stats."""
+
+    symbol: str
+    days: int
+    snapshots: list[ExpectedMoveSnapshot]
+    accuracy: ExpectedMoveAccuracy
+
+
+class SnapshotResult(BaseModel):
+    """Result of take_snapshot tool."""
+
+    symbol: str
+    date: date
+    status: str  # "saved" | "already_exists"
+
+
 class OptionContract(BaseModel):
     """Single option contract with greeks and market data."""
 

@@ -6,11 +6,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
+from src.core.snapshot_store import SnapshotStore
 from src.data.cache import CacheManager
 from src.data.schwab_client import SchwabClient
 from src.data.token_manager import TokenManager
 from src.shared.logging import get_logger, setup_logging
 from src.tools.gex import register_tools as register_gex_tools
+from src.tools.history import register_tools as register_history_tools
 from src.tools.market_data import register_tools as register_market_data_tools
 from src.tools.volatility import register_tools as register_volatility_tools
 
@@ -27,6 +29,7 @@ APP_SECRET = os.environ.get("SCHWAB_APP_SECRET", "")
 CALLBACK_URL = os.environ.get("SCHWAB_CALLBACK_URL", "https://127.0.0.1:8182")
 TOKEN_PATH = os.environ.get("TOKEN_PATH", "./tokens/schwab_tokens.db")
 CACHE_DIR = os.environ.get("CACHE_DIRECTORY", "./cache")
+SNAPSHOT_DIR = os.environ.get("SNAPSHOT_DIRECTORY", "./data/snapshots")
 QUOTE_CACHE_TTL = int(os.environ.get("QUOTE_CACHE_TTL", "5"))
 
 # ── Initialize components ──────────────────────────────────────────
@@ -45,6 +48,8 @@ schwab_client = SchwabClient(
     cache=cache,
 )
 
+snapshot_store = SnapshotStore(base_dir=SNAPSHOT_DIR)
+
 # ── Create MCP server ──────────────────────────────────────────────
 
 mcp = FastMCP(
@@ -60,6 +65,7 @@ mcp = FastMCP(
 register_market_data_tools(mcp, schwab_client)
 register_gex_tools(mcp, schwab_client)
 register_volatility_tools(mcp, schwab_client)
+register_history_tools(mcp, schwab_client, snapshot_store)
 
 # ── Entry point ─────────────────────────────────────────────────────
 
