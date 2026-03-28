@@ -4,16 +4,28 @@ Verifies that all models can be created, validated, and serialized correctly.
 These tests protect against accidental field changes or type mismatches.
 """
 
+from datetime import date
+
 import pytest
 from pydantic import ValidationError
 
 from src.data.models import (
     CharmShift,
+    ExpectedMoveResult,
     GexRegime,
     GexSummary,
+    IVContext,
     KeyLevel,
     Quote,
+    SkewData,
+    TermStructure,
+    TermStructurePoint,
     VannaShift,
+    VIX3MData,
+    VIXContext,
+    VIXData,
+    VIXTermStructure,
+    VolatilityAnalysis,
 )
 from tests.fixtures.factories import (
     build_option_contract,
@@ -336,3 +348,153 @@ class TestVannaShift:
         )
         data = shift.model_dump(mode="json")
         assert data["iv_change_pct"] == 2.0
+
+
+# ── Volatility Models ────────────────────────────────────────────
+
+
+class TestIVContext:
+    """Tests for the IVContext model."""
+
+    def test_create_with_nulls(self) -> None:
+        """Test IVContext with None fields (Phase 3A default)."""
+        ctx = IVContext(
+            percentile=None, rank=None, rv_20d=None,
+            iv_rv_premium=None, regime="normal",
+        )
+        assert ctx.percentile is None
+        assert ctx.regime == "normal"
+
+    def test_serialization_preserves_nulls(self) -> None:
+        """Test that None fields serialize to null in JSON."""
+        ctx = IVContext(
+            percentile=None, rank=None, rv_20d=None,
+            iv_rv_premium=None, regime="low",
+        )
+        data = ctx.model_dump(mode="json")
+        assert data["percentile"] is None
+        assert data["regime"] == "low"
+
+
+class TestSkewData:
+    """Tests for the SkewData model."""
+
+    def test_create_skew(self) -> None:
+        """Test SkewData creation with all fields."""
+        skew = SkewData(
+            put_25d=17.50, call_25d=14.50, skew_25d=3.0,
+            skew_10d=3.5, skew_40d=2.0, butterfly=0.15,
+            regime="normal_skew",
+        )
+        assert skew.skew_25d == 3.0
+        assert skew.regime == "normal_skew"
+
+    def test_serialization(self) -> None:
+        """Test SkewData JSON serialization."""
+        skew = SkewData(
+            put_25d=17.50, call_25d=14.50, skew_25d=3.0,
+            skew_10d=3.5, skew_40d=2.0, butterfly=0.15,
+            regime="normal_skew",
+        )
+        data = skew.model_dump(mode="json")
+        assert data["butterfly"] == 0.15
+
+
+class TestTermStructure:
+    """Tests for TermStructure and TermStructurePoint models."""
+
+    def test_term_structure_serialization(self) -> None:
+        """Test TermStructure with points serializes correctly."""
+        ts = TermStructure(
+            shape="contango",
+            slope=0.05,
+            by_expiration=[
+                TermStructurePoint(
+                    expiration=date(2026, 4, 3), dte=7, atm_iv=15.85,
+                ),
+                TermStructurePoint(
+                    expiration=date(2026, 4, 26), dte=30, atm_iv=17.20,
+                ),
+            ],
+        )
+        data = ts.model_dump(mode="json")
+        assert data["shape"] == "contango"
+        assert len(data["by_expiration"]) == 2
+
+
+class TestVolatilityAnalysis:
+    """Tests for the VolatilityAnalysis model."""
+
+    def test_serialization(self) -> None:
+        """Test full VolatilityAnalysis serializes to JSON."""
+        from datetime import UTC, datetime
+
+        va = VolatilityAnalysis(
+            symbol="SPX",
+            spot_price=5900.0,
+            timestamp=datetime(2026, 3, 27, 14, 30, 0, tzinfo=UTC),
+            atm_iv=15.85,
+            iv_context=IVContext(
+                percentile=None, rank=None, rv_20d=None,
+                iv_rv_premium=None, regime="normal",
+            ),
+            skew=SkewData(
+                put_25d=17.50, call_25d=14.50, skew_25d=3.0,
+                skew_10d=3.5, skew_40d=2.0, butterfly=0.15,
+                regime="normal_skew",
+            ),
+            term_structure=TermStructure(
+                shape="contango", slope=0.05, by_expiration=[],
+            ),
+        )
+        data = va.model_dump(mode="json")
+        assert data["atm_iv"] == 15.85
+        assert isinstance(data["timestamp"], str)
+
+
+class TestVIXContext:
+    """Tests for VIX-related models."""
+
+    def test_vix_context_serialization(self) -> None:
+        """Test VIXContext serializes with all nested models."""
+        from datetime import UTC, datetime
+
+        ctx = VIXContext(
+            timestamp=datetime(2026, 3, 27, 14, 30, 0, tzinfo=UTC),
+            vix=VIXData(
+                level=18.50, change=-0.80,
+                percentile=None, regime="normal",
+            ),
+            vix3m=VIX3MData(level=19.20),
+            term_structure=VIXTermStructure(
+                ratio=0.964, shape="contango",
+            ),
+        )
+        data = ctx.model_dump(mode="json")
+        assert data["vix"]["level"] == 18.50
+        assert data["vix"]["percentile"] is None
+        assert data["term_structure"]["shape"] == "contango"
+
+
+class TestExpectedMoveResult:
+    """Tests for the ExpectedMoveResult model."""
+
+    def test_serialization(self) -> None:
+        """Test ExpectedMoveResult serializes correctly."""
+        em = ExpectedMoveResult(
+            symbol="SPX",
+            spot_price=5900.0,
+            expiration=date(2026, 4, 3),
+            dte=7,
+            atm_strike=5900.0,
+            atm_iv=15.85,
+            expected_move_straddle=49.10,
+            expected_move_1sd=129.6,
+            upper_bound=5949.10,
+            lower_bound=5850.90,
+            upper_bound_1sd=6029.6,
+            lower_bound_1sd=5770.4,
+        )
+        data = em.model_dump(mode="json")
+        assert data["expected_move_straddle"] == 49.10
+        assert isinstance(data["expiration"], str)

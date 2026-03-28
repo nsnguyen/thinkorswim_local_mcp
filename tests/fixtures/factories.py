@@ -193,3 +193,125 @@ def build_gex_test_chain(
             )
         )
     return calls, puts
+
+
+def build_volatility_test_chain(
+    spot: float = 5900.0,
+) -> tuple[list[OptionContract], list[OptionContract]]:
+    """Build a multi-expiration chain for volatility testing.
+
+    5 strikes x 3 expirations (7, 14, 30 DTE) with realistic IVs.
+    Shows put skew and contango term structure.
+    ATM IVs: 7DTE=15.85, 14DTE=16.50, 30DTE=17.20
+    """
+    expirations = [date(2026, 4, 3), date(2026, 4, 10), date(2026, 4, 26)]
+    dtes = [7, 14, 30]
+    strikes = [5800.0, 5850.0, 5900.0, 5950.0, 6000.0]
+
+    # Per-expiration data: call_deltas, put_deltas, call_ivs, put_ivs
+    exp_data = [
+        {  # 7 DTE
+            "call_deltas": [0.75, 0.62, 0.50, 0.33, 0.18],
+            "put_deltas": [-0.25, -0.38, -0.50, -0.67, -0.82],
+            "call_ivs": [18.00, 16.80, 15.80, 15.00, 14.50],
+            "put_ivs": [17.50, 16.80, 15.90, 15.50, 15.20],
+        },
+        {  # 14 DTE
+            "call_deltas": [0.72, 0.60, 0.50, 0.35, 0.22],
+            "put_deltas": [-0.28, -0.40, -0.50, -0.65, -0.78],
+            "call_ivs": [18.70, 17.20, 16.50, 15.70, 15.20],
+            "put_ivs": [18.30, 17.50, 16.50, 16.10, 15.80],
+        },
+        {  # 30 DTE
+            "call_deltas": [0.68, 0.58, 0.50, 0.38, 0.25],
+            "put_deltas": [-0.32, -0.42, -0.50, -0.62, -0.75],
+            "call_ivs": [19.40, 18.00, 17.20, 16.40, 15.80],
+            "put_ivs": [19.00, 18.20, 17.20, 16.80, 16.40],
+        },
+    ]
+
+    calls = []
+    puts = []
+    for exp_idx, (exp, dte) in enumerate(zip(expirations, dtes)):
+        d = exp_data[exp_idx]
+        for i, strike in enumerate(strikes):
+            calls.append(
+                build_option_contract(
+                    symbol=f"SPXW  {exp.strftime('%y%m%d')}C0{int(strike)}000",
+                    option_type="CALL",
+                    strike_price=strike,
+                    expiration_date=exp,
+                    days_to_expiration=dte,
+                    delta=d["call_deltas"][i],
+                    gamma=0.005,
+                    theta=-2.50,
+                    vega=4.50,
+                    implied_volatility=d["call_ivs"][i],
+                    open_interest=5000,
+                    volume=1000,
+                    in_the_money=strike < spot,
+                    bid=10.0,
+                    ask=10.50,
+                    mark=10.25,
+                )
+            )
+            puts.append(
+                build_option_contract(
+                    symbol=f"SPXW  {exp.strftime('%y%m%d')}P0{int(strike)}000",
+                    option_type="PUT",
+                    strike_price=strike,
+                    expiration_date=exp,
+                    days_to_expiration=dte,
+                    delta=d["put_deltas"][i],
+                    gamma=0.005,
+                    theta=-2.50,
+                    vega=4.50,
+                    implied_volatility=d["put_ivs"][i],
+                    open_interest=5000,
+                    volume=1000,
+                    in_the_money=strike > spot,
+                    bid=10.0,
+                    ask=10.50,
+                    mark=10.25,
+                )
+            )
+    return calls, puts
+
+
+def build_vix_quote(
+    level: float = 18.50,
+    change: float = -0.80,
+) -> Quote:
+    """Build a VIX quote for testing."""
+    return build_quote(
+        symbol="$VIX",
+        last=level,
+        bid=level - 0.05,
+        ask=level + 0.05,
+        open=level + change,
+        high=level + 0.50,
+        low=level - 0.50,
+        close=level + change,
+        volume=0,
+        net_change=change,
+        net_change_pct=round(change / (level + change) * 100, 2),
+    )
+
+
+def build_vix3m_quote(
+    level: float = 19.20,
+) -> Quote:
+    """Build a VIX3M quote for testing."""
+    return build_quote(
+        symbol="$VIX3M",
+        last=level,
+        bid=level - 0.05,
+        ask=level + 0.05,
+        open=level,
+        high=level + 0.30,
+        low=level - 0.30,
+        close=level,
+        volume=0,
+        net_change=0.0,
+        net_change_pct=0.0,
+    )

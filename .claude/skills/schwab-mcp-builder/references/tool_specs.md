@@ -45,7 +45,7 @@
 - Returns: current vs projected zero_gamma, iv_change_applied, current vs projected total_gex
 - Formula: vanna ≈ ν/S
 
-## Phase 3 — Volatility & Context
+## Phase 3 — Volatility & Context (COMPLETE)
 
 ### analyze_volatility
 - Input: `symbol: str = "SPX"`

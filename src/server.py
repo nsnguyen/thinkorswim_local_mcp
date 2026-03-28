@@ -12,6 +12,7 @@ from src.data.token_manager import TokenManager
 from src.shared.logging import get_logger, setup_logging
 from src.tools.gex import register_tools as register_gex_tools
 from src.tools.market_data import register_tools as register_market_data_tools
+from src.tools.volatility import register_tools as register_volatility_tools
 
 # Load .env from project root
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -58,6 +59,7 @@ mcp = FastMCP(
 # Register tool modules
 register_market_data_tools(mcp, schwab_client)
 register_gex_tools(mcp, schwab_client)
+register_volatility_tools(mcp, schwab_client)
 
 # ── Entry point ─────────────────────────────────────────────────────
 

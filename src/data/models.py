@@ -109,6 +109,138 @@ class VannaShift(BaseModel):
     projected_total_gex: float
 
 
+# ── Volatility Models ─────────────────────────────────────────────
+
+
+class IVContext(BaseModel):
+    """IV context with percentile, rank, realized vol.
+
+    History-dependent fields are None until Phase 3B provides historical data.
+    """
+
+    percentile: float | None
+    rank: float | None
+    rv_20d: float | None
+    iv_rv_premium: float | None
+    regime: str  # "low", "normal", "elevated", "high"
+
+
+class SkewData(BaseModel):
+    """IV skew measurements across delta targets."""
+
+    put_25d: float
+    call_25d: float
+    skew_25d: float
+    skew_10d: float
+    skew_40d: float
+    butterfly: float
+    regime: str  # "normal_skew", "steep_skew", "flat_skew", "inverted"
+
+
+class TermStructurePoint(BaseModel):
+    """ATM IV at a single expiration."""
+
+    expiration: date
+    dte: int
+    atm_iv: float
+
+
+class TermStructure(BaseModel):
+    """IV term structure analysis."""
+
+    shape: str  # "contango", "backwardation", "flat", "humped"
+    slope: float
+    by_expiration: list[TermStructurePoint]
+
+
+class VolatilityAnalysis(BaseModel):
+    """Full volatility analysis return type."""
+
+    symbol: str
+    spot_price: float
+    timestamp: datetime
+    atm_iv: float
+    iv_context: IVContext
+    skew: SkewData
+    term_structure: TermStructure
+
+
+class IVSurfacePoint(BaseModel):
+    """Single point on the IV surface."""
+
+    strike: float
+    dte: int
+    iv: float
+    delta: float
+    expiration: date
+
+
+class IVSurface(BaseModel):
+    """IV surface data."""
+
+    symbol: str
+    spot_price: float
+    timestamp: datetime
+    surface: list[IVSurfacePoint]
+
+
+class VIXData(BaseModel):
+    """VIX quote data with regime."""
+
+    level: float
+    change: float
+    percentile: float | None  # None until Phase 3B
+    regime: str  # "low", "normal", "elevated", "high"
+
+
+class VIX3MData(BaseModel):
+    """VIX3M level."""
+
+    level: float
+
+
+class VIXTermStructure(BaseModel):
+    """VIX/VIX3M term structure."""
+
+    ratio: float
+    shape: str  # "contango", "backwardation", "flat"
+
+
+class VIXContext(BaseModel):
+    """Full VIX context return type."""
+
+    timestamp: datetime
+    vix: VIXData
+    vix3m: VIX3MData
+    term_structure: VIXTermStructure
+
+
+class ExpectedMoveResult(BaseModel):
+    """Expected move for a single expiration."""
+
+    symbol: str
+    spot_price: float
+    expiration: date
+    dte: int
+    atm_strike: float
+    atm_iv: float
+    expected_move_straddle: float
+    expected_move_1sd: float
+    upper_bound: float
+    lower_bound: float
+    upper_bound_1sd: float
+    lower_bound_1sd: float
+
+
+class ExpectedMoveMulti(BaseModel):
+    """Expected move across multiple expirations."""
+
+    symbol: str
+    spot_price: float
+    timestamp: datetime
+    expirations: list[ExpectedMoveResult]
+
+
 class OptionContract(BaseModel):
     """Single option contract with greeks and market data."""
 
