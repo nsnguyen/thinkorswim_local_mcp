@@ -10,7 +10,8 @@ from src.data.cache import CacheManager
 from src.data.schwab_client import SchwabClient
 from src.data.token_manager import TokenManager
 from src.shared.logging import get_logger, setup_logging
-from src.tools.market_data import register_tools
+from src.tools.gex import register_tools as register_gex_tools
+from src.tools.market_data import register_tools as register_market_data_tools
 
 # Load .env from project root
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -55,7 +56,8 @@ mcp = FastMCP(
 )
 
 # Register tool modules
-register_tools(mcp, schwab_client)
+register_market_data_tools(mcp, schwab_client)
+register_gex_tools(mcp, schwab_client)
 
 # ── Entry point ─────────────────────────────────────────────────────
 

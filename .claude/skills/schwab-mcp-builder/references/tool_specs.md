@@ -19,7 +19,7 @@
 - Returns: OptionsChainData model (underlying_price, call_contracts, put_contracts, expirations, strikes)
 - Multi-range DTE fetching with per-range caching
 
-## Phase 2 — GEX Engine
+## Phase 2 — GEX Engine (COMPLETE)
 
 ### get_gex_levels
 - Input: `symbol: str = "SPX"`, `max_dte: int = 45`, `include_0dte: bool = True`

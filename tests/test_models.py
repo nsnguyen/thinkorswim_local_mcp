@@ -7,11 +7,19 @@ These tests protect against accidental field changes or type mismatches.
 import pytest
 from pydantic import ValidationError
 
-from src.data.models import Quote
+from src.data.models import (
+    CharmShift,
+    GexRegime,
+    GexSummary,
+    KeyLevel,
+    Quote,
+    VannaShift,
+)
 from tests.fixtures.factories import (
     build_option_contract,
     build_options_chain_data,
     build_quote,
+    build_strike_gex,
 )
 
 # ── Quote Model ────────────────────────────────────────────────────
@@ -195,3 +203,136 @@ class TestOptionsChainData:
         )
         assert len(chain.call_contracts) == 0
         assert len(chain.put_contracts) == 0
+
+
+# ── StrikeGex Model ──────────────────────────────────────────────
+
+
+class TestStrikeGex:
+    """Tests for the StrikeGex model."""
+
+    def test_create_strike_gex(self) -> None:
+        """Test that StrikeGex can be created with all fields."""
+        sg = build_strike_gex()
+        assert sg.strike == 5900.0
+        assert sg.net_gex == sg.call_gex + sg.put_gex
+
+    def test_strike_gex_serialization(self) -> None:
+        """Test that StrikeGex serializes to JSON-compatible dict."""
+        sg = build_strike_gex()
+        data = sg.model_dump(mode="json")
+        assert isinstance(data, dict)
+        assert data["strike"] == 5900.0
+
+    def test_strike_gex_negative_put_gex(self) -> None:
+        """Test that put_gex is negative (puts have -1 sign convention)."""
+        sg = build_strike_gex(put_gex=-500000.0, net_gex=500000.0)
+        assert sg.put_gex < 0
+
+
+# ── KeyLevel Model ───────────────────────────────────────────────
+
+
+class TestKeyLevel:
+    """Tests for the KeyLevel model."""
+
+    def test_create_key_level(self) -> None:
+        """Test that a KeyLevel can be created with all fields."""
+        kl = KeyLevel(price=5850.0, gex=1500000.0, call_oi=8500, put_oi=6200)
+        assert kl.price == 5850.0
+        assert kl.gex == 1500000.0
+
+    def test_key_level_serialization(self) -> None:
+        """Test KeyLevel JSON serialization."""
+        kl = KeyLevel(price=5900.0, gex=0.0, call_oi=0, put_oi=0)
+        data = kl.model_dump(mode="json")
+        assert data["price"] == 5900.0
+
+
+# ── GexRegime Model ──────────────────────────────────────────────
+
+
+class TestGexRegime:
+    """Tests for the GexRegime model."""
+
+    def test_positive_regime(self) -> None:
+        """Test positive regime when spot > zero_gamma."""
+        regime = GexRegime(type="positive", zero_gamma=5800.0, spot_vs_zero_gamma=100.0)
+        assert regime.type == "positive"
+        assert regime.spot_vs_zero_gamma > 0
+
+    def test_negative_regime(self) -> None:
+        """Test negative regime when spot < zero_gamma."""
+        regime = GexRegime(type="negative", zero_gamma=6000.0, spot_vs_zero_gamma=-100.0)
+        assert regime.type == "negative"
+        assert regime.spot_vs_zero_gamma < 0
+
+
+# ── GexSummary Model ─────────────────────────────────────────────
+
+
+class TestGexSummary:
+    """Tests for the GexSummary model."""
+
+    def test_gex_summary_serialization(self) -> None:
+        """Test that GexSummary serializes to JSON with timestamp as string."""
+        from datetime import UTC, datetime
+
+        summary = GexSummary(
+            symbol="SPX",
+            spot_price=5900.0,
+            timestamp=datetime(2026, 3, 27, 14, 30, 0, tzinfo=UTC),
+            total_gex=1000000.0,
+            gross_gex=2000000.0,
+            total_dex=500000.0,
+            total_vex=300000.0,
+            aggregate_theta=-150000.0,
+            call_gex=1500000.0,
+            put_gex=-500000.0,
+            gex_ratio=3.0,
+            contracts_analyzed=500,
+        )
+        data = summary.model_dump(mode="json")
+        assert isinstance(data["timestamp"], str)
+        assert data["gex_ratio"] == 3.0
+
+
+# ── CharmShift / VannaShift Models ───────────────────────────────
+
+
+class TestCharmShift:
+    """Tests for the CharmShift model."""
+
+    def test_charm_shift_serialization(self) -> None:
+        """Test that CharmShift serializes correctly."""
+        shift = CharmShift(
+            symbol="SPX",
+            spot_price=5900.0,
+            hours_forward=3.0,
+            current_zero_gamma=5850.0,
+            projected_zero_gamma=5870.0,
+            shift_direction="higher",
+            current_total_gex=1000000.0,
+            projected_total_gex=900000.0,
+        )
+        data = shift.model_dump(mode="json")
+        assert data["shift_direction"] == "higher"
+        assert data["hours_forward"] == 3.0
+
+
+class TestVannaShift:
+    """Tests for the VannaShift model."""
+
+    def test_vanna_shift_serialization(self) -> None:
+        """Test that VannaShift serializes correctly."""
+        shift = VannaShift(
+            symbol="SPX",
+            spot_price=5900.0,
+            iv_change_pct=2.0,
+            current_zero_gamma=5850.0,
+            projected_zero_gamma=5830.0,
+            current_total_gex=1000000.0,
+            projected_total_gex=1100000.0,
+        )
+        data = shift.model_dump(mode="json")
+        assert data["iv_change_pct"] == 2.0

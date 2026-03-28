@@ -2,7 +2,7 @@
 
 from datetime import UTC, date, datetime
 
-from src.data.models import OptionContract, OptionsChainData, Quote
+from src.data.models import OptionContract, OptionsChainData, Quote, StrikeGex
 
 
 def build_quote(
@@ -119,3 +119,77 @@ def build_options_chain_data(
         strikes=strikes or [5900.0],
         is_delayed=is_delayed,
     )
+
+
+def build_strike_gex(
+    strike: float = 5900.0,
+    call_gex: float = 1000000.0,
+    put_gex: float = -500000.0,
+    net_gex: float = 500000.0,
+    call_oi: int = 12000,
+    put_oi: int = 8000,
+    total_volume: int = 5200,
+) -> StrikeGex:
+    """Build a StrikeGex model with sensible defaults for testing."""
+    return StrikeGex(
+        strike=strike,
+        call_gex=call_gex,
+        put_gex=put_gex,
+        net_gex=net_gex,
+        call_oi=call_oi,
+        put_oi=put_oi,
+        total_volume=total_volume,
+    )
+
+
+def build_gex_test_chain(
+    spot: float = 5900.0,
+) -> tuple[list[OptionContract], list[OptionContract]]:
+    """Build a realistic set of call/put contracts for GEX testing.
+
+    Creates 5 strikes around the spot price with realistic greeks.
+    Returns (calls, puts) tuple.
+    """
+    strikes = [5800.0, 5850.0, 5900.0, 5950.0, 6000.0]
+    call_deltas = [0.75, 0.62, 0.50, 0.32, 0.18]
+    put_deltas = [-0.25, -0.38, -0.50, -0.68, -0.82]
+    gammas = [0.0032, 0.0045, 0.0068, 0.0045, 0.0032]
+    thetas = [-1.80, -2.80, -3.50, -2.80, -1.80]
+    vegas = [3.20, 4.50, 5.80, 4.50, 3.20]
+    call_ois = [5000, 8500, 12000, 9500, 4000]
+    put_ois = [3000, 6200, 10000, 15000, 7000]
+    call_vols = [1200, 2500, 5200, 3000, 800]
+    put_vols = [800, 1800, 4500, 6000, 1500]
+
+    calls = []
+    puts = []
+    for i, strike in enumerate(strikes):
+        calls.append(
+            build_option_contract(
+                symbol=f"SPXW  260403C0{int(strike)}000",
+                option_type="CALL",
+                strike_price=strike,
+                delta=call_deltas[i],
+                gamma=gammas[i],
+                theta=thetas[i],
+                vega=vegas[i],
+                open_interest=call_ois[i],
+                volume=call_vols[i],
+                in_the_money=strike < spot,
+            )
+        )
+        puts.append(
+            build_option_contract(
+                symbol=f"SPXW  260403P0{int(strike)}000",
+                option_type="PUT",
+                strike_price=strike,
+                delta=put_deltas[i],
+                gamma=gammas[i],
+                theta=thetas[i],
+                vega=vegas[i],
+                open_interest=put_ois[i],
+                volume=put_vols[i],
+                in_the_money=strike > spot,
+            )
+        )
+    return calls, puts
