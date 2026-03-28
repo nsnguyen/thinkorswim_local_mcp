@@ -1,0 +1,28 @@
+{
+    "SPX": {
+        "assetMainType": "INDEX",
+        "realtime": true,
+        "ssid": 1234567890,
+        "symbol": "SPX",
+        "quote": {
+            "52WeekHigh": 6200.00,
+            "52WeekLow": 4800.00,
+            "askPrice": 5900.50,
+            "bidPrice": 5899.50,
+            "closePrice": 5880.00,
+            "highPrice": 5910.00,
+            "lastPrice": 5900.00,
+            "lowPrice": 5875.00,
+            "mark": 5900.00,
+            "netChange": 20.00,
+            "netPercentChange": 0.34,
+            "openPrice": 5885.00,
+            "totalVolume": 1500000,
+            "isDelayed": false
+        },
+        "reference": {
+            "exchange": "IND",
+            "exchangeName": "INDICES"
+        }
+    }
+}

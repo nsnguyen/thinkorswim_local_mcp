@@ -1,11 +1,12 @@
 """OAuth 2.0 token lifecycle management wrapping schwabdev."""
 
-import logging
 from pathlib import Path
 
 import schwabdev
 
-logger = logging.getLogger(__name__)
+from src.shared.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class TokenError(Exception):

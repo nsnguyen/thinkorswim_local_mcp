@@ -1,13 +1,16 @@
 """Schwab API client wrapper with multi-range DTE fetching and caching."""
 
-import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
-from src.data.cache import CacheManager, DTE_RANGE_TTLS, QUOTE_CACHE_TTL
+import schwabdev
+
+from src.data.cache import DTE_RANGE_TTLS, CacheManager
 from src.data.models import OptionContract, OptionsChainData, Quote
 from src.data.token_manager import TokenManager
+from src.shared.logging import get_logger
+from src.shared.requests import call_schwab_api
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SchwabClientError(Exception):
@@ -23,12 +26,32 @@ class SchwabClient:
     - Returns Pydantic models
     """
 
-    def __init__(self, token_manager: TokenManager, cache: CacheManager):
+    def __init__(
+        self,
+        token_manager: TokenManager,
+        cache: CacheManager,
+        max_retries: int = 3,
+        retry_base_delay: float = 1.0,
+    ) -> None:
         self._token_manager = token_manager
         self._cache = cache
+        self._max_retries = max_retries
+        self._retry_base_delay = retry_base_delay
 
-    def _client(self):
+    def _client(self) -> schwabdev.Client:
+        """Get the underlying schwabdev.Client from the token manager."""
         return self._token_manager.get_client()
+
+    def _api_call(self, method_name: str, *args: object, **kwargs: object) -> dict:
+        """Make a Schwab API call through the shared request layer."""
+        return call_schwab_api(
+            self._client(),
+            method_name,
+            *args,
+            max_retries=self._max_retries,
+            base_delay=self._retry_base_delay,
+            **kwargs,
+        )
 
     # ── Quotes ──────────────────────────────────────────────────────
 
@@ -39,20 +62,17 @@ class SchwabClient:
             return Quote.model_validate(cached)
 
         try:
-            resp = self._client().quote(symbol)
-            data = resp.json()
+            data = self._api_call("quote", symbol)
         except Exception as e:
             raise SchwabClientError(f"Failed to fetch quote for {symbol}: {e}") from e
 
         if symbol not in data:
             raise SchwabClientError(
-                f"No quote data returned for {symbol}. "
-                f"Available keys: {list(data.keys())}"
+                f"No quote data returned for {symbol}. Available keys: {list(data.keys())}"
             )
 
         raw = data[symbol]
         quote_data = raw.get("quote", raw)
-        ref_data = raw.get("reference", {})
 
         quote = Quote(
             symbol=symbol,
@@ -67,7 +87,7 @@ class SchwabClient:
             net_change=quote_data.get("netChange", 0.0),
             net_change_pct=quote_data.get("netPercentChange", 0.0),
             is_delayed=quote_data.get("isDelayed", raw.get("realtime", True) is False),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         self._cache.set_quote(symbol, quote.model_dump(mode="json"))
@@ -126,8 +146,7 @@ class SchwabClient:
 
             # Parse contracts, deduplicating across ranges
             calls, puts = self._parse_contracts(
-                range_data, symbol, seen_symbols,
-                min_open_interest, min_volume
+                range_data, symbol, seen_symbols, min_open_interest, min_volume
             )
             all_calls.extend(calls)
             all_puts.extend(puts)
@@ -140,7 +159,7 @@ class SchwabClient:
         return OptionsChainData(
             symbol=symbol,
             underlying_price=underlying_price,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             call_contracts=all_calls,
             put_contracts=all_puts,
             expirations=expirations,
@@ -158,11 +177,7 @@ class SchwabClient:
         f = from_dte or 0
         t = to_dte or 9999
 
-        return [
-            (rmin, rmax, ttl)
-            for rmin, rmax, ttl in DTE_RANGE_TTLS
-            if rmax >= f and rmin <= t
-        ]
+        return [(rmin, rmax, ttl) for rmin, rmax, ttl in DTE_RANGE_TTLS if rmax >= f and rmin <= t]
 
     def _fetch_chain_range(
         self,
@@ -177,7 +192,8 @@ class SchwabClient:
         to_date = today + timedelta(days=min(to_dte, 3650))  # cap at 10 years
 
         try:
-            resp = self._client().option_chains(
+            data = self._api_call(
+                "option_chains",
                 symbol=symbol,
                 contractType=contract_type,
                 includeUnderlyingQuote=True,
@@ -185,11 +201,13 @@ class SchwabClient:
                 fromDate=from_date.isoformat(),
                 toDate=to_date.isoformat(),
             )
-            data = resp.json()
         except Exception as e:
             logger.warning(
                 "Failed to fetch chain for %s (DTE %d-%d): %s",
-                symbol, from_dte, to_dte, e,
+                symbol,
+                from_dte,
+                to_dte,
+                e,
             )
             return None
 

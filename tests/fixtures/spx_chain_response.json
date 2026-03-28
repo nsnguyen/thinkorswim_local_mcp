@@ -1,0 +1,184 @@
+{
+    "symbol": "SPX",
+    "status": "SUCCESS",
+    "underlyingPrice": 5900.00,
+    "isDelayed": false,
+    "underlying": {
+        "symbol": "SPX",
+        "last": 5900.00,
+        "bid": 5899.50,
+        "ask": 5900.50,
+        "mark": 5900.00,
+        "totalVolume": 1500000
+    },
+    "callExpDateMap": {
+        "2026-04-03:7": {
+            "5850.0": [
+                {
+                    "symbol": "SPXW  260403C05850000",
+                    "putCall": "CALL",
+                    "description": "SPXW Apr 03 2026 5850 Call",
+                    "bid": 65.20,
+                    "ask": 66.00,
+                    "last": 65.50,
+                    "mark": 65.60,
+                    "bidSize": 10,
+                    "askSize": 12,
+                    "totalVolume": 2500,
+                    "openInterest": 8500,
+                    "delta": 0.62,
+                    "gamma": 0.0045,
+                    "theta": -2.80,
+                    "vega": 4.50,
+                    "rho": 0.15,
+                    "volatility": 16.50,
+                    "theoreticalOptionValue": 65.55,
+                    "strikePrice": 5850.0,
+                    "daysToExpiration": 7,
+                    "expirationDate": 1743638400000,
+                    "inTheMoney": true,
+                    "multiplier": 100.0
+                }
+            ],
+            "5900.0": [
+                {
+                    "symbol": "SPXW  260403C05900000",
+                    "putCall": "CALL",
+                    "description": "SPXW Apr 03 2026 5900 Call",
+                    "bid": 38.50,
+                    "ask": 39.20,
+                    "last": 38.80,
+                    "mark": 38.85,
+                    "bidSize": 15,
+                    "askSize": 18,
+                    "totalVolume": 5200,
+                    "openInterest": 12000,
+                    "delta": 0.50,
+                    "gamma": 0.0068,
+                    "theta": -3.50,
+                    "vega": 5.80,
+                    "rho": 0.10,
+                    "volatility": 15.80,
+                    "theoreticalOptionValue": 38.82,
+                    "strikePrice": 5900.0,
+                    "daysToExpiration": 7,
+                    "expirationDate": 1743638400000,
+                    "inTheMoney": false,
+                    "multiplier": 100.0
+                }
+            ],
+            "5950.0": [
+                {
+                    "symbol": "SPXW  260403C05950000",
+                    "putCall": "CALL",
+                    "description": "SPXW Apr 03 2026 5950 Call",
+                    "bid": 18.30,
+                    "ask": 18.90,
+                    "last": 18.50,
+                    "mark": 18.60,
+                    "bidSize": 20,
+                    "askSize": 25,
+                    "totalVolume": 3800,
+                    "openInterest": 15000,
+                    "delta": 0.32,
+                    "gamma": 0.0055,
+                    "theta": -2.90,
+                    "vega": 4.20,
+                    "rho": 0.06,
+                    "volatility": 16.20,
+                    "theoreticalOptionValue": 18.55,
+                    "strikePrice": 5950.0,
+                    "daysToExpiration": 7,
+                    "expirationDate": 1743638400000,
+                    "inTheMoney": false,
+                    "multiplier": 100.0
+                }
+            ]
+        }
+    },
+    "putExpDateMap": {
+        "2026-04-03:7": {
+            "5850.0": [
+                {
+                    "symbol": "SPXW  260403P05850000",
+                    "putCall": "PUT",
+                    "description": "SPXW Apr 03 2026 5850 Put",
+                    "bid": 15.00,
+                    "ask": 15.60,
+                    "last": 15.30,
+                    "mark": 15.30,
+                    "bidSize": 8,
+                    "askSize": 10,
+                    "totalVolume": 1800,
+                    "openInterest": 6200,
+                    "delta": -0.38,
+                    "gamma": 0.0045,
+                    "theta": -2.60,
+                    "vega": 4.50,
+                    "rho": -0.08,
+                    "volatility": 17.10,
+                    "theoreticalOptionValue": 15.28,
+                    "strikePrice": 5850.0,
+                    "daysToExpiration": 7,
+                    "expirationDate": 1743638400000,
+                    "inTheMoney": false,
+                    "multiplier": 100.0
+                }
+            ],
+            "5900.0": [
+                {
+                    "symbol": "SPXW  260403P05900000",
+                    "putCall": "PUT",
+                    "description": "SPXW Apr 03 2026 5900 Put",
+                    "bid": 38.20,
+                    "ask": 38.90,
+                    "last": 38.50,
+                    "mark": 38.55,
+                    "bidSize": 12,
+                    "askSize": 14,
+                    "totalVolume": 4100,
+                    "openInterest": 10500,
+                    "delta": -0.50,
+                    "gamma": 0.0068,
+                    "theta": -3.40,
+                    "vega": 5.80,
+                    "rho": -0.12,
+                    "volatility": 15.90,
+                    "theoreticalOptionValue": 38.52,
+                    "strikePrice": 5900.0,
+                    "daysToExpiration": 7,
+                    "expirationDate": 1743638400000,
+                    "inTheMoney": false,
+                    "multiplier": 100.0
+                }
+            ],
+            "5950.0": [
+                {
+                    "symbol": "SPXW  260403P05950000",
+                    "putCall": "PUT",
+                    "description": "SPXW Apr 03 2026 5950 Put",
+                    "bid": 67.80,
+                    "ask": 68.50,
+                    "last": 68.10,
+                    "mark": 68.15,
+                    "bidSize": 6,
+                    "askSize": 8,
+                    "totalVolume": 1200,
+                    "openInterest": 4800,
+                    "delta": -0.68,
+                    "gamma": 0.0055,
+                    "theta": -2.70,
+                    "vega": 4.20,
+                    "rho": -0.16,
+                    "volatility": 16.40,
+                    "theoreticalOptionValue": 68.12,
+                    "strikePrice": 5950.0,
+                    "daysToExpiration": 7,
+                    "expirationDate": 1743638400000,
+                    "inTheMoney": true,
+                    "multiplier": 100.0
+                }
+            ]
+        }
+    }
+}

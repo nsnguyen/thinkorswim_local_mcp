@@ -18,6 +18,7 @@ On first run this creates a virtual environment, installs dependencies, and copi
 SCHWAB_APP_KEY=your_app_key
 SCHWAB_APP_SECRET=your_app_secret
 SCHWAB_CALLBACK_URL=https://127.0.0.1:8182
+QUOTE_CACHE_TTL=5  # seconds (Schwab allows 120 req/min)
 ```
 
 ### 2. Authenticate
