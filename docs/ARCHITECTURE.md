@@ -740,7 +740,7 @@ Detailed implementation docs in [`docs/phases/`](phases/):
 |---|---|---|---|
 | [**Phase 1 — Foundation**](phases/PHASE-1-FOUNDATION.md) | Scaffolding + data | MCP server, Schwab client, cache, `get_quote`, `get_options_chain` | — |
 | [**Phase 2 — GEX Engine**](phases/PHASE-2-GEX-ENGINE.md) | GEX calculation | GEX calculator, level extraction, `get_gex_levels`, charm/vanna | Phase 1 |
-| [**Phase 3 — Volatility**](phases/PHASE-3-VOLATILITY.md) | IV + VIX analysis | IV skew, term structure, VIX context, expected move, MCP resources | Phase 1 |
+| [**Phase 3 — Volatility**](phases/PHASE-3-VOLATILITY.md) | IV + VIX analysis | IV skew, term structure, VIX context, expected move | Phase 1 |
 | [**Phase 3B — History**](phases/PHASE-3B-HISTORY.md) | Daily snapshots | GEX/IV/VIX history, expected move accuracy, regime streaks | Phases 2-3 |
 | [**Phase 4 — Trade Math**](phases/PHASE-4-TRADE-MATH.md) | Numbers for trades | POP (Black-Scholes), P&L, breakevens, alert engine | Phases 1-3 |
-| [**Phase 5 — Polish**](phases/PHASE-5-REMAINING-TOOLS.md) | Complete + harden | Remaining tools, MCP prompts, error handling, tests | Phases 1-4 |
+| [**Phase 5 — Polish**](phases/PHASE-5-REMAINING-TOOLS.md) | Complete + harden | Remaining tools, MCP resources, MCP prompts, error handling, tests | Phases 1-4 |

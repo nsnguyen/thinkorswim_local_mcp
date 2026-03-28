@@ -11,8 +11,7 @@
 3. IV percentile, rank, and realized vol calculation
 4. VIX context (level, percentile, regime, term structure)
 5. Expected move calculation (ATM straddle + IV-based 1SD)
-6. MCP resources (market status, VIX dashboard, GEX regime)
-7. Seven new tools + four resources
+6. Five new tools
 
 ## Files to Create
 
@@ -26,9 +25,6 @@ src/
 │   ├── iv_context.py            # IV percentile, rank, realized vol
 │   └── vix_context.py           # VIX regime, percentile, term structure
 │
-├── resources/
-│   ├── __init__.py
-│   └── market_resources.py      # MCP resource handlers
 ```
 
 ## Port Mapping
@@ -131,22 +127,6 @@ iv_method = spot × ATM_IV/100 × √(DTE/365)
 - Input: `symbol`, `expiration` (optional), `multiple_expirations` flag
 - Returns: straddle-based and IV-based expected move, upper/lower bounds
 
-## MCP Resources
-
-### `schwab://market-status`
-- Checks market hours for equity, option, futures
-- Returns: is_open, session type, close time
-
-### `schwab://vix-dashboard`
-- Returns: VIX, change, percentile, regime, VIX3M, term structure
-
-### `schwab://gex-regime/{symbol}`
-- Returns: regime (+/-), zero gamma, spot, call wall, put wall
-
-### `schwab://watchlist`
-- User-configurable symbol list with current quotes
-- Config in .env: `WATCHLIST=SPX,/ES,$VIX,QQQ`
-
 ## Definition of Done
 
 - [ ] `analyze_volatility("SPX")` returns full IV analysis
@@ -155,5 +135,4 @@ iv_method = spot × ATM_IV/100 × √(DTE/365)
 - [ ] `get_iv_surface("SPX")` returns surface data
 - [ ] `get_expected_move("SPX")` returns straddle + IV-based move
 - [ ] `get_expected_move("SPX", multiple_expirations=True)` returns all near-term
-- [ ] MCP resources accessible from Claude
 - [ ] VIX history cached (1-day TTL — historical data doesn't change)
