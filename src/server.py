@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
+from src.core.alert_engine import AlertEngine
 from src.core.snapshot_store import SnapshotStore
 from src.data.cache import CacheManager
 from src.data.schwab_client import SchwabClient
@@ -14,6 +15,7 @@ from src.shared.logging import get_logger, setup_logging
 from src.tools.gex import register_tools as register_gex_tools
 from src.tools.history import register_tools as register_history_tools
 from src.tools.market_data import register_tools as register_market_data_tools
+from src.tools.trade_math import register_tools as register_trade_math_tools
 from src.tools.volatility import register_tools as register_volatility_tools
 
 # Load .env from project root
@@ -49,6 +51,7 @@ schwab_client = SchwabClient(
 )
 
 snapshot_store = SnapshotStore(base_dir=SNAPSHOT_DIR)
+alert_engine = AlertEngine(state_dir=os.environ.get("ALERT_STATE_DIR", "./state"))
 
 # ── Create MCP server ──────────────────────────────────────────────
 
@@ -66,6 +69,7 @@ register_market_data_tools(mcp, schwab_client)
 register_gex_tools(mcp, schwab_client)
 register_volatility_tools(mcp, schwab_client)
 register_history_tools(mcp, schwab_client, snapshot_store)
+register_trade_math_tools(mcp, schwab_client, alert_engine)
 
 # ── Entry point ─────────────────────────────────────────────────────
 

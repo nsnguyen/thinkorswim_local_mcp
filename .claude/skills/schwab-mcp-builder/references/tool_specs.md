@@ -76,7 +76,7 @@
 ### take_snapshot
 - Manually trigger daily snapshot save to Parquet
 
-## Phase 4 — Trade Math
+## Phase 4 — Trade Math (COMPLETE)
 
 ### evaluate_trade
 - Input: `symbol: str`, `legs: list[dict]` (strike, type, action, expiration)

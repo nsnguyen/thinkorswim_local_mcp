@@ -11,3 +11,11 @@ class VolatilityCalculationError(Exception):
 
 class SnapshotStoreError(Exception):
     """Raised when snapshot store operations fail."""
+
+
+class TradeMathError(Exception):
+    """Raised when trade evaluation encounters invalid data."""
+
+
+class AlertEngineError(Exception):
+    """Raised when alert engine operations fail."""

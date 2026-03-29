@@ -408,6 +408,69 @@ class SnapshotResult(BaseModel):
     status: str  # "saved" | "already_exists"
 
 
+# ── Trade Math Models (Phase 4) ──────────────────────────────────
+
+
+class TradeLeg(BaseModel):
+    """A single leg of an options trade."""
+
+    strike: float
+    option_type: str  # "CALL" | "PUT"
+    action: str  # "BUY" | "SELL"
+    expiration: date
+    quantity: int = 1
+
+
+class TradeEvaluation(BaseModel):
+    """Full evaluation of a multi-leg options trade."""
+
+    symbol: str
+    spot_price: float
+    strategy_type: str
+    legs: list[TradeLeg]
+    net_credit: float  # positive = credit, negative = debit
+    max_profit: float
+    max_loss: float
+    breakevens: list[float]
+    pop: float  # probability of profit (0-1)
+    expected_value: float
+    risk_reward: float
+    net_delta: float
+    net_gamma: float
+    net_theta: float
+    net_vega: float
+
+
+class AlertCondition(BaseModel):
+    """A persisted alert condition."""
+
+    id: str
+    type: str  # gex_flip, iv_rank_above, vix_above, wall_breach, price_above, etc.
+    symbol: str | None = None
+    threshold: float | None = None
+    wall: str | None = None  # "call" | "put" for wall_breach
+    created_at: datetime
+
+
+class AlertResult(BaseModel):
+    """Result of evaluating a single alert condition."""
+
+    condition: AlertCondition
+    status: str  # "triggered" | "clear"
+    current_value: float | None = None
+    previous_value: float | None = None
+    details: str | None = None
+
+
+class AlertCheckResult(BaseModel):
+    """Result of check_alerts action."""
+
+    action: str
+    results: list[AlertResult] | None = None
+    conditions: list[AlertCondition] | None = None
+    message: str | None = None
+
+
 class OptionContract(BaseModel):
     """Single option contract with greeks and market data."""
 
