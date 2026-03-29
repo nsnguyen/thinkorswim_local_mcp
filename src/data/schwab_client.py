@@ -5,7 +5,17 @@ from datetime import UTC, date, datetime, timedelta
 import schwabdev
 
 from src.data.cache import DTE_RANGE_TTLS, CacheManager
-from src.data.models import OptionContract, OptionsChainData, Quote
+from src.data.models import (
+    ExpirationDate,
+    Instrument,
+    MarketHours,
+    MarketMover,
+    OptionContract,
+    OptionsChainData,
+    PriceCandle,
+    PriceHistory,
+    Quote,
+)
 from src.data.token_manager import TokenManager
 from src.shared.logging import get_logger
 from src.shared.requests import call_schwab_api
@@ -305,3 +315,164 @@ class SchwabClient:
                     )
 
         return contracts
+
+    # ── Price History ────────────────────────────────────────────────
+
+    def get_price_history(
+        self,
+        symbol: str,
+        period_type: str = "day",
+        period: int | None = None,
+        frequency_type: str = "minute",
+        frequency: int = 5,
+        extended_hours: bool = False,
+    ) -> PriceHistory:
+        """Fetch OHLCV price history candles for a symbol."""
+        kwargs: dict = {
+            "periodType": period_type,
+            "frequencyType": frequency_type,
+            "frequency": frequency,
+            "needExtendedHoursData": extended_hours,
+        }
+        if period is not None:
+            kwargs["period"] = period
+
+        try:
+            data = self._api_call("price_history", symbol, **kwargs)
+        except Exception as e:
+            raise SchwabClientError(f"Failed to fetch price history for {symbol}: {e}") from e
+
+        candles = [
+            PriceCandle(
+                datetime=_epoch_ms_to_datetime(c["datetime"]),
+                open=float(c.get("open", 0.0)),
+                high=float(c.get("high", 0.0)),
+                low=float(c.get("low", 0.0)),
+                close=float(c.get("close", 0.0)),
+                volume=int(c.get("volume", 0)),
+            )
+            for c in data.get("candles", [])
+        ]
+        return PriceHistory(
+            symbol=data.get("symbol", symbol),
+            period_type=period_type,
+            frequency_type=frequency_type,
+            candles=candles,
+        )
+
+    # ── Market Movers ────────────────────────────────────────────────
+
+    def get_market_movers(
+        self,
+        symbol: str,
+        sort_by: str | None = None,
+        count: int = 10,
+    ) -> list[MarketMover]:
+        """Fetch top market movers for an index."""
+        kwargs: dict = {}
+        if sort_by is not None:
+            kwargs["sort"] = sort_by
+
+        try:
+            data = self._api_call("movers", symbol, **kwargs)
+        except Exception as e:
+            raise SchwabClientError(f"Failed to fetch movers for {symbol}: {e}") from e
+
+        movers = [
+            MarketMover(
+                symbol=m.get("symbol", ""),
+                description=m.get("description", ""),
+                last=float(m.get("lastPrice", 0.0)),
+                change=float(m.get("change", 0.0)),
+                change_pct=float(m.get("percentChange", 0.0)),
+                volume=int(m.get("totalVolume", 0)),
+            )
+            for m in data.get("screeners", [])
+        ]
+        return movers[:count]
+
+    # ── Market Hours ─────────────────────────────────────────────────
+
+    def get_market_hours(self, market: str, trade_date: str | None = None) -> MarketHours:
+        """Fetch session hours and open/closed status for a market type."""
+        try:
+            data = self._api_call("market_hours", [market], date=trade_date)
+        except Exception as e:
+            raise SchwabClientError(f"Failed to fetch market hours for {market}: {e}") from e
+
+        # Response is nested: {market_type: {exchange_key: {...}}}
+        market_data = data.get(market, {})
+        inner = next(iter(market_data.values()), {}) if market_data else {}
+        is_open = bool(inner.get("isOpen", False))
+
+        session = inner.get("sessionHours", {})
+        reg = session.get("regularMarket", [{}])
+        pre = session.get("preMarket", [{}])
+        post = session.get("postMarket", [{}])
+
+        def _first_start(slots: list) -> str | None:
+            return slots[0].get("start") if slots else None
+
+        def _first_end(slots: list) -> str | None:
+            return slots[0].get("end") if slots else None
+
+        return MarketHours(
+            market=market,
+            is_open=is_open,
+            regular_start=_first_start(reg),
+            regular_end=_first_end(reg),
+            pre_market_start=_first_start(pre),
+            pre_market_end=_first_end(pre),
+            post_market_start=_first_start(post),
+            post_market_end=_first_end(post),
+        )
+
+    # ── Instrument Search ────────────────────────────────────────────
+
+    def search_instruments(
+        self, query: str, projection: str = "symbol-search"
+    ) -> list[Instrument]:
+        """Search for instruments by symbol or description."""
+        try:
+            data = self._api_call("instruments", query, projection=projection)
+        except Exception as e:
+            raise SchwabClientError(f"Failed to search instruments for '{query}': {e}") from e
+
+        return [
+            Instrument(
+                symbol=inst.get("symbol", ""),
+                description=inst.get("description", ""),
+                exchange=inst.get("exchange", ""),
+                asset_type=inst.get("assetType", ""),
+                cusip=inst.get("cusip"),
+            )
+            for inst in data.get("instruments", [])
+        ]
+
+    # ── Expiration Dates ─────────────────────────────────────────────
+
+    def get_expiration_dates(self, symbol: str) -> list[ExpirationDate]:
+        """Fetch all available option expiration dates for a symbol."""
+        _TYPE_MAP = {"W": "weekly", "M": "monthly", "Q": "quarterly", "S": "leap"}
+
+        try:
+            data = self._api_call("option_expiration_chain", symbol)
+        except Exception as e:
+            raise SchwabClientError(f"Failed to fetch expiration dates for {symbol}: {e}") from e
+
+        from datetime import date as _date
+
+        return [
+            ExpirationDate(
+                expiration_date=_date.fromisoformat(exp.get("expirationDate", "1970-01-01")),
+                dte=int(exp.get("daysToExpiration", 0)),
+                expiration_type=_TYPE_MAP.get(exp.get("expirationType", "W"), "weekly"),
+            )
+            for exp in data.get("expirationList", [])
+        ]
+
+
+def _epoch_ms_to_datetime(epoch_ms: int | float) -> "datetime":
+    """Convert epoch milliseconds to UTC datetime."""
+    from datetime import UTC, datetime
+    return datetime.fromtimestamp(epoch_ms / 1000, tz=UTC)

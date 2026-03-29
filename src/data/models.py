@@ -525,3 +525,69 @@ class Quote(BaseModel):
     net_change_pct: float
     is_delayed: bool
     timestamp: datetime
+
+
+# ── Market Extras Models (Phase 5) ────────────────────────────────
+
+
+class PriceCandle(BaseModel):
+    """Single OHLCV candle from price history."""
+
+    datetime: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+
+
+class PriceHistory(BaseModel):
+    """Price history candles for a symbol."""
+
+    symbol: str
+    period_type: str
+    frequency_type: str
+    candles: list[PriceCandle]
+    is_delayed: bool = False
+
+
+class MarketMover(BaseModel):
+    """Single entry from market movers list."""
+
+    symbol: str
+    description: str
+    last: float
+    change: float
+    change_pct: float
+    volume: int
+
+
+class MarketHours(BaseModel):
+    """Market session hours for a given market type."""
+
+    market: str
+    is_open: bool
+    regular_start: str | None
+    regular_end: str | None
+    pre_market_start: str | None
+    pre_market_end: str | None
+    post_market_start: str | None
+    post_market_end: str | None
+
+
+class Instrument(BaseModel):
+    """Instrument search result."""
+
+    symbol: str
+    description: str
+    exchange: str
+    asset_type: str
+    cusip: str | None = None
+
+
+class ExpirationDate(BaseModel):
+    """Single available options expiration."""
+
+    expiration_date: date
+    dte: int
+    expiration_type: str  # "weekly" | "monthly" | "quarterly" | "leap"

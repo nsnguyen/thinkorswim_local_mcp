@@ -11,10 +11,13 @@ from src.core.snapshot_store import SnapshotStore
 from src.data.cache import CacheManager
 from src.data.schwab_client import SchwabClient
 from src.data.token_manager import TokenManager
+from src.prompts import register_prompts
+from src.resources import register_resources
 from src.shared.logging import get_logger, setup_logging
 from src.tools.gex import register_tools as register_gex_tools
 from src.tools.history import register_tools as register_history_tools
 from src.tools.market_data import register_tools as register_market_data_tools
+from src.tools.market_extras import register_tools as register_market_extras_tools
 from src.tools.trade_math import register_tools as register_trade_math_tools
 from src.tools.volatility import register_tools as register_volatility_tools
 
@@ -70,6 +73,11 @@ register_gex_tools(mcp, schwab_client)
 register_volatility_tools(mcp, schwab_client)
 register_history_tools(mcp, schwab_client, snapshot_store)
 register_trade_math_tools(mcp, schwab_client, alert_engine)
+register_market_extras_tools(mcp, schwab_client)
+
+# Register resources and prompts
+register_resources(mcp, schwab_client)
+register_prompts(mcp)
 
 # ── Entry point ─────────────────────────────────────────────────────
 

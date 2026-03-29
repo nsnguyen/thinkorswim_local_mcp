@@ -87,7 +87,7 @@
 - Condition types: gex_flip, iv_rank_above, vix_above, wall_breach, price_level
 - Returns: triggered/clear alerts with context
 
-## Phase 5 — Remaining Tools
+## Phase 5 — Remaining Tools (COMPLETE)
 
 ### get_price_history, get_futures_quote, get_market_movers, get_market_hours, search_instruments, get_expiration_dates
 
